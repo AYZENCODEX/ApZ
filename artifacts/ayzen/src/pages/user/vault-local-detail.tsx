@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   Shield, Eye, EyeOff, Copy, Check, Loader2, ChevronLeft, Edit3, Trash2,
-  Calendar, BarChart2, Clock, UserCheck, Star,
+  Calendar, BarChart2, Clock, UserCheck, Star, KeyRound,
   AlertTriangle, Zap, Plus, X, Smartphone, TrendingUp, Mail, Settings2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";

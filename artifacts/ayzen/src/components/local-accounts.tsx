@@ -965,6 +965,7 @@ function AddCategoryDialog({ open, onClose, onAdded }: { open: boolean; onClose:
 
 // ─── Main LocalAccounts Component ─────────────────────────────────────────────
 export default function LocalAccounts() {
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   const [categories, setCategories] = useState<Category[]>(LOCAL_ACCOUNT_DEFAULT_CATEGORIES);
   const [selectedCat, setSelectedCat] = useState<string>(LOCAL_ACCOUNT_DEFAULT_CATEGORIES[0].name);
@@ -1328,7 +1329,7 @@ export default function LocalAccounts() {
                   <AccountCard
                     key={acc.id}
                     account={acc}
-                    onView={a => { setViewAccount(a); setViewDialogOpen(true); }}
+                    onView={a => navigate(`/vault/local/${a.id}`)}
                     onEdit={a => { setEditAccount(a); setFormOpen(true); }}
                     onDelete={id => setDeleteId(id)}
                     onShare={shareOne}

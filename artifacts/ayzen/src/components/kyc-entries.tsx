@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -335,6 +336,7 @@ function KycDialog({ open, editEntry, onClose, onSaved }: {
 
 // ─── Main list ───────────────────────────────────────────────────────────────
 export default function KycEntries() {
+  const [, navigate] = useLocation();
   const [entries, setEntries] = useState<KycEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");

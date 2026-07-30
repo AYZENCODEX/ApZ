@@ -19,53 +19,65 @@
  * noted above.
  */
 import { Link, useLocation } from "wouter";
-import { UserPlus, ShieldCheck, HardDrive, Share2, Ban } from "lucide-react";
+import { LayoutDashboard, Users, FolderGit2, UserPlus, ShieldCheck, Share2, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export interface VaultSidebarItem {
-  href: string;
-  label: string;
-  icon: React.ElementType;
-  description: string;
-}
+// ── MANAGE group — enroll hierarchy (Overview / Entity / Project) ──────────
+const MANAGE_ITEMS = [
+  { href: "/vault?tab=entity", label: "Overview", icon: LayoutDashboard },
+  { href: "/enroll/entities",  label: "Entity",   icon: Users },
+  { href: "/enroll/projects",  label: "Project",  icon: FolderGit2 },
+] as const;
 
-export const VAULT_SIDEBAR_ITEMS: VaultSidebarItem[] = [
-  { href: "/vault/enroll",   label: "Enroll",   icon: UserPlus,    description: "Entities enrolled into Vault" },
-  { href: "/vault/security", label: "Security", icon: ShieldCheck, description: "Vault PIN, entity-view PIN & sign-in" },
-  { href: "/vault/backup",   label: "Backup",   icon: HardDrive,   description: "Backup-code recovery" },
-  { href: "/vault/shared",   label: "Shared",   icon: Share2,      description: "Sharing & permissions" },
-  { href: "/vault/banned",   label: "Banned",   icon: Ban,         description: "Banned entities, accounts & KYC entities" },
-];
+// ── OTHER group — vault management pages ───────────────────────────────────
+const OTHER_ITEMS = [
+  { href: "/vault/banned",   label: "Banned",   icon: Ban },
+  { href: "/vault/shared",   label: "Shared",   icon: Share2 },
+  { href: "/vault/security", label: "Security", icon: ShieldCheck },
+  { href: "/vault/enroll",   label: "Enroll",   icon: UserPlus },
+] as const;
+
+function SidebarItem({ href, label, icon: Icon, active }: { href: string; label: string; icon: React.ElementType; active: boolean }) {
+  return (
+    <Link href={href}>
+      <div className={cn(
+        "flex items-center gap-2.5 px-3 py-2.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer border group",
+        active
+          ? "bg-primary/10 text-primary border-primary/25 font-bold shadow-[inset_0_1px_0_rgba(34,211,238,0.1)]"
+          : "text-muted-foreground/60 border-transparent hover:bg-muted/20 hover:text-foreground hover:border-border/30"
+      )}>
+        <div className={cn("w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 transition-all",
+          active ? "bg-primary/20 border border-primary/30" : "bg-muted/30 border border-transparent group-hover:bg-muted/60 group-hover:border-border/30"
+        )}>
+          <Icon className={cn("w-3.5 h-3.5", active ? "text-primary" : "text-current")} />
+        </div>
+        <span className="truncate">{label}</span>
+        {active && <span className="ml-auto w-1 h-1 rounded-full bg-primary flex-shrink-0" />}
+      </div>
+    </Link>
+  );
+}
 
 export function VaultSidebar() {
   const [location] = useLocation();
+  const matchHref = (href: string) => href.includes("?") ? location === href.split("?")[0] : location === href;
+
   return (
-    <nav aria-label="Vault sections" className="w-full sm:w-52 flex-shrink-0 space-y-1">
-      {VAULT_SIDEBAR_ITEMS.map(item => {
-        const active = location === item.href;
-        const Icon = item.icon;
-        return (
-          <Link key={item.href} href={item.href}>
-            <div
-              className={cn(
-                "flex items-center gap-2.5 px-3 py-2.5 rounded-lg font-mono text-xs uppercase tracking-wider transition-all cursor-pointer border group",
-                active
-                  ? "bg-primary/10 text-primary border-primary/25 font-bold shadow-[inset_0_1px_0_rgba(34,211,238,0.1)]"
-                  : "text-muted-foreground/60 border-transparent hover:bg-muted/20 hover:text-foreground hover:border-border/30"
-              )}
-            >
-              <div className={cn(
-                "w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 transition-all",
-                active ? "bg-primary/20 border border-primary/30" : "bg-muted/30 border border-transparent group-hover:bg-muted/60 group-hover:border-border/30"
-              )}>
-                <Icon className={cn("w-3.5 h-3.5", active ? "text-primary" : "text-current")} />
-              </div>
-              <span className="truncate">{item.label}</span>
-              {active && <span className="ml-auto w-1 h-1 rounded-full bg-primary flex-shrink-0" />}
-            </div>
-          </Link>
-        );
-      })}
+    <nav aria-label="Vault sections" className="w-full sm:w-52 flex-shrink-0 space-y-4">
+      {/* MANAGE — enrollment hierarchy */}
+      <div className="space-y-1">
+        <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40 px-3 pb-0.5">Manage</p>
+        {MANAGE_ITEMS.map(item => (
+          <SidebarItem key={item.href} {...item} active={matchHref(item.href)} />
+        ))}
+      </div>
+      {/* OTHER — administrative pages */}
+      <div className="space-y-1">
+        <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40 px-3 pb-0.5">Other</p>
+        {OTHER_ITEMS.map(item => (
+          <SidebarItem key={item.href} {...item} active={matchHref(item.href)} />
+        ))}
+      </div>
     </nav>
   );
 }

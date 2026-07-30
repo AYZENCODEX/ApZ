@@ -88,6 +88,7 @@ const UserVault         = lazy(() => import("@/pages/user/vault"));
 const VaultEntityDetail = lazy(() => import("@/pages/user/vault-entity-detail"));
 const VaultEntityAccess = lazy(() => import("@/pages/user/vault-entity-access"));
 const VaultLocalDetail  = lazy(() => import("@/pages/user/vault-local-detail"));
+const VaultKycDetail    = lazy(() => import("@/pages/user/vault-kyc-detail"));
 const VaultMailInbox    = lazy(() => import("@/pages/user/vault-mail-inbox"));
 const VaultMailMessage  = lazy(() => import("@/pages/user/vault-mail-message"));
 const VaultTwoFaCategory     = lazy(() => import("@/pages/user/vault-2fa-category"));
@@ -220,6 +221,7 @@ export const USER_ROUTES: RouteConfig[] = [
   { path: "/vault/entity/:id/access", component: VaultEntityAccess },
   { path: "/vault/entity/:id",   component: VaultEntityDetail },
   { path: "/vault/local/:id",    component: VaultLocalDetail },
+  { path: "/vault/kyc/:id",      component: VaultKycDetail },
   { path: "/vault/2fa/:category/:id", component: VaultTwoFaEntity },
   { path: "/vault/2fa/:category",     component: VaultTwoFaCategory },
   { path: "/vault/mail-hub/:category/:id/mail/:msgId", component: VaultMailMessageDetail },
