@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "AYZEN — Crypto Airdrop Platform"
+version = "1.0.0"
+id = "artifacts/ayzen"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23325
+
+[services.development]
+run = "pnpm --filter @workspace/ayzen run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ayzen", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/ayzen/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23325"
+BASE_PATH = "/"

@@ -1,36 +1,43 @@
-# [Project name]
+# AYZEN — Crypto Airdrop Platform
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A professional crypto airdrop command center: track projects, complete tasks, manage encrypted vault entities, analyze wallets across 20+ chains, and maximize ROI — all in one platform.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/ayzen run dev` — run the frontend (port 23325, served at `/`)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080, served at `/api`)
 - `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
+- Frontend: React + Vite, shadcn/ui, Tailwind CSS v4, Recharts, wouter, TanStack Query
+- API: Express 5, pino logging
+- DB: PostgreSQL (Supabase) + Drizzle ORM — schema auto-migrated on API startup via MIGRATIONS array in `src/index.ts`
+- Auth: JWT + bcrypt, optional TOTP 2FA
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
+- External: Telegram bot, Resend email, Groq/OpenRouter AI, Cloudflare
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/ayzen/src/pages/` — all frontend pages (user/, admin/, moderator/, team-leader/)
+- `artifacts/ayzen/src/components/` — shared components (vault/, layout/, ui/)
+- `artifacts/api-server/src/routes/` — all API route handlers (80+ route files)
+- `artifacts/api-server/src/index.ts` — startup + MIGRATIONS array (auto-applied on start)
+- `lib/api-spec/openapi.yaml` — OpenAPI contract (source of truth)
+- `lib/db/src/schema/` — Drizzle schema files
+- `lib/api-client-react/src/generated/` — generated React Query hooks (do not edit)
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
-
-## Product
-
-_Describe the high-level user-facing capabilities of this app once they exist._
+- **All 15 vault/project/team phases implemented** — Phases 1–15 from the phased implementation plan are complete. See `attached_assets/AYZEN_phased_implementation_prompts_1785435451619.md`.
+- **Schema migrations via MIGRATIONS array** — The API server applies `ALTER TABLE / CREATE TABLE IF NOT EXISTS` statements on every startup, making the DB self-healing without a separate migration runner.
+- **Supabase Postgres** — `DATABASE_URL` points to Supabase; the DB lib auto-detects Supabase hostnames and forces SSL + session pooler (port 5432).
+- **imap externalized in esbuild** — `imap` and `imap-simple` are marked external in `build.mjs` so they load from node_modules at runtime rather than being bundled.
 
 ## User preferences
 
@@ -38,7 +45,9 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- After editing `build.mjs` externals, always restart the API Server workflow.
+- The `imap` package must remain in `dependencies` (not devDependencies) — it is externalized by esbuild and loaded at runtime.
+- `DATABASE_URL` must use Supabase's session pooler port (5432), not the transaction pooler (6543).
 
 ## Pointers
 

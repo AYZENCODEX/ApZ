@@ -10,7 +10,35 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+function buildPoolConfig(): pg.PoolConfig {
+  let connectionString = process.env.DATABASE_URL!;
+  let needsSsl = false;
+
+  try {
+    const url = new URL(connectionString);
+    const isSupabase = /supabase\.co$|pooler\.supabase\.com$/.test(url.hostname);
+
+    if (isSupabase) {
+      needsSsl = true;
+      // Supabase's transaction pooler (port 6543) does not support prepared
+      // statements, which Drizzle relies on. Force the session pooler (5432).
+      if (url.port === "6543") {
+        url.port = "5432";
+        connectionString = url.toString();
+      }
+    }
+  } catch {
+    // If DATABASE_URL isn't a valid URL, fall back to using it as-is.
+  }
+
+  const config: pg.PoolConfig = { connectionString };
+  if (needsSsl) {
+    config.ssl = { rejectUnauthorized: false };
+  }
+  return config;
+}
+
+export const pool = new Pool(buildPoolConfig());
 export const db = drizzle(pool, { schema });
 
 export * from "./schema";

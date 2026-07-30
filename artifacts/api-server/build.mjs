@@ -96,6 +96,8 @@ async function buildAll() {
       "wrangler",
       "zeromq",
       "zeromq-prebuilt",
+      "imap",
+      "imap-simple",
       "playwright",
       "puppeteer",
       "puppeteer-core",

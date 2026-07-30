@@ -5,7 +5,16 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check": "tsx ./src/check-all.ts",
+    "check:syntax": "tsx ./src/check-all.ts --syntax-only",
+    "backup:db": "tsx ./src/backup-db.ts",
+    "backup:env:encrypt": "tsx ./src/encrypt-env.ts",
+    "backup:env:decrypt": "tsx ./src/decrypt-env.ts",
+    "reencrypt:vault": "tsx ./src/reencrypt-vault.ts"
+  },
+  "dependencies": {
+    "@workspace/db": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",
