@@ -237,6 +237,24 @@ router.delete("/local-accounts/categories/:id", requireAuth, async (req, res): P
   }
 });
 
+// ─── GET /local-accounts/:id — fetch single account ──────────────────────────
+// Must be registered AFTER all literal sub-paths (/categories, etc.) so Express
+// doesn't swallow them as param values.
+router.get("/local-accounts/:id", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.user!.userId;
+  const id = parseInt(req.params.id as string);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  try {
+    const result = await db.execute(sql.raw(
+      `SELECT * FROM local_accounts WHERE id = ${id} AND user_id = ${userId} LIMIT 1`
+    ));
+    if (!result.rows.length) { res.status(404).json({ error: "Account not found" }); return; }
+    res.json(decryptRow(result.rows[0] as any, LOCAL_SENSITIVE_FIELDS));
+  } catch (err: any) {
+    res.status(500).json({ error: "DB error", detail: err?.message });
+  }
+});
+
 // ─── GET /local-accounts/:id/points ──────────────────────────────────────────
 router.get("/local-accounts/:id/points", requireAuth, async (req, res): Promise<void> => {
   const userId = req.user!.userId;

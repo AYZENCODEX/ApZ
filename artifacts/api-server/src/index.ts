@@ -1709,6 +1709,19 @@ const MIGRATIONS = [
   // are "free" and can be imported into a new entity.
   "ALTER TABLE local_accounts ADD COLUMN IF NOT EXISTS vault_entry_id INTEGER",
   "ALTER TABLE kyc_entries ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active'",
+  // KYC extended fields — Account tab Main/Info/Recovery parity with vault entity
+  "ALTER TABLE kyc_entries ADD COLUMN IF NOT EXISTS account_2fa TEXT",
+  "ALTER TABLE kyc_entries ADD COLUMN IF NOT EXISTS account_backup_code TEXT",
+  "ALTER TABLE kyc_entries ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP",
+  "ALTER TABLE kyc_entries ADD COLUMN IF NOT EXISTS account_create_date TIMESTAMP",
+  "ALTER TABLE kyc_entries ADD COLUMN IF NOT EXISTS account_buy_date TIMESTAMP",
+  "ALTER TABLE kyc_entries ADD COLUMN IF NOT EXISTS account_buy_price REAL DEFAULT 0",
+  "ALTER TABLE kyc_entries ADD COLUMN IF NOT EXISTS account_worth REAL DEFAULT 0",
+  "ALTER TABLE kyc_entries ADD COLUMN IF NOT EXISTS followers TEXT",
+  "ALTER TABLE kyc_entries ADD COLUMN IF NOT EXISTS email_recovery TEXT",
+  "ALTER TABLE kyc_entries ADD COLUMN IF NOT EXISTS email_recovery_password TEXT",
+  "ALTER TABLE kyc_entries ADD COLUMN IF NOT EXISTS recovery_2fa TEXT",
+  "ALTER TABLE kyc_entries ADD COLUMN IF NOT EXISTS recovery_backup_code TEXT",
   // New credential fields — account-level 2FA/backup + per-platform email2fa/backup/recovery
   "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS account_2fa TEXT",
   "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS account_backup_code TEXT",

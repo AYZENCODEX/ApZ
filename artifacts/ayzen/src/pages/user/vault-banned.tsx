@@ -1,46 +1,65 @@
 /**
  * vault-banned.tsx
  * ─────────────────────────────────────────────
- * Vault sidebar → Banned.
+ * Vault → Other → Banned.
  *
- * A single place to see everything currently flagged as banned across the
- * Vault: whole entities, local accounts, and KYC entities (all three use the
- * same `status === "banned"` convention — see routes/vault.ts PATCH
- * /vault/:id, routes/local-accounts.ts PATCH /local-accounts/:id/status,
- * routes/kyc.ts PATCH /kyc-entries/:id/status), plus any individually-banned
- * linked platform account (Twitter/Discord/Telegram/Other) that lives inside
- * an otherwise-active entity.
+ * Shows every banned account grouped by platform:
+ *   • Twitter   — entity platform accounts with twitterBanned = true
+ *   • Discord   — entity platform accounts with discordBanned = true
+ *   • Telegram  — entity platform accounts with telegramBanned = true
+ *   • Other     — custom "other" linked accounts with banned = true
+ *   • Entity    — whole vault entities with status = "banned"
+ *   • Local     — local accounts with status = "banned"
+ *   • KYC       — KYC entities with status = "banned"
  */
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useListVaultEntries, customFetch } from "@workspace/api-client-react";
 import { VaultSectionPage, VaultSectionEmptyState } from "@/components/layout/vault-sidebar";
 import { Badge } from "@/components/ui/badge";
-import { Ban, Shield, User, ShieldCheck, Loader2, ChevronRight, Twitter, MessageCircle, Send } from "lucide-react";
+import {
+  Ban, Shield, User, ShieldCheck, Loader2, ChevronRight,
+  Twitter, MessageCircle, Send, LayoutGrid,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type EntryAny = any;
 
-function SectionHeader({ label, count }: { label: string; count: number }) {
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+function PlatformHeader({ icon: Icon, label, count, color = "red" }: {
+  icon: React.ElementType; label: string; count: number; color?: string;
+}) {
+  const colorMap: Record<string, string> = {
+    red:    "text-red-400 border-red-400/30 bg-red-400/10",
+    blue:   "text-blue-400 border-blue-400/30 bg-blue-400/10",
+    indigo: "text-indigo-400 border-indigo-400/30 bg-indigo-400/10",
+    cyan:   "text-cyan-400 border-cyan-400/30 bg-cyan-400/10",
+    zinc:   "text-zinc-400 border-zinc-400/30 bg-zinc-400/10",
+  };
+  const c = colorMap[color] ?? colorMap.red;
   return (
-    <div className="flex items-center gap-2 px-1 pt-2">
-      <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50">{label}</p>
-      <span className="font-mono text-[9px] text-muted-foreground/40">({count})</span>
+    <div className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border", c)}>
+      <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+      <span className="font-mono text-[10px] font-bold uppercase tracking-widest flex-1">{label}</span>
+      <span className="font-mono text-[9px] opacity-70">{count} banned</span>
     </div>
   );
 }
 
-function BannedRow({ icon: Icon, title, subtitle, onClick }: { icon: React.ElementType; title: string; subtitle?: string; onClick?: () => void }) {
+function BannedRow({ icon: Icon, title, subtitle, onClick }: {
+  icon: React.ElementType; title: string; subtitle?: string; onClick?: () => void;
+}) {
   return (
     <div
       onClick={onClick}
       className={cn(
-        "flex items-center gap-3 bg-card border border-red-400/20 rounded-lg px-3 py-2.5",
-        onClick && "cursor-pointer hover:border-red-400/40 transition-colors"
+        "flex items-center gap-3 bg-card border border-border/40 rounded-lg px-3 py-2.5 ml-3",
+        onClick && "cursor-pointer hover:border-red-400/30 transition-colors"
       )}
     >
-      <div className="w-7 h-7 rounded-md bg-red-400/10 border border-red-400/20 flex items-center justify-center flex-shrink-0">
-        <Icon className="w-3.5 h-3.5 text-red-400" />
+      <div className="w-6 h-6 rounded-md bg-red-400/10 border border-red-400/20 flex items-center justify-center flex-shrink-0">
+        <Icon className="w-3 h-3 text-red-400" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="font-mono text-xs font-bold text-foreground truncate">{title}</p>
@@ -53,6 +72,18 @@ function BannedRow({ icon: Icon, title, subtitle, onClick }: { icon: React.Eleme
     </div>
   );
 }
+
+// ─── Platform groups ──────────────────────────────────────────────────────────
+
+interface PlatformGroup {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  color: string;
+  rows: { id: string; title: string; subtitle?: string; navigate: string }[];
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function VaultBanned() {
   const [, navigate] = useLocation();
@@ -82,38 +113,100 @@ export default function VaultBanned() {
   }, []);
 
   const entities: EntryAny[] = (vaultData as EntryAny[] | undefined) ?? [];
-  const bannedEntities = entities.filter(e => e.status === "banned");
-  const bannedLocal = localAccounts.filter(a => a.status === "banned");
-  const bannedKyc = kycEntries.filter(k => k.status === "banned");
 
-  // Individually-banned platform accounts inside otherwise-active entities.
-  type PlatformBan = { entity: EntryAny; platform: "twitter" | "discord" | "telegram"; handle: string };
-  const platformBans: PlatformBan[] = [];
-  for (const e of entities) {
-    if (e.twitterBanned && e.twitterUsername) platformBans.push({ entity: e, platform: "twitter", handle: `@${e.twitterUsername}` });
-    if (e.discordBanned && e.discordUsername) platformBans.push({ entity: e, platform: "discord", handle: e.discordUsername });
-    if (e.telegramBanned && (e.telegramUsername || e.telegramPhone)) platformBans.push({ entity: e, platform: "telegram", handle: e.telegramUsername ? `@${e.telegramUsername}` : e.telegramPhone });
-  }
-
-  type OtherBan = { entity: EntryAny; platform: string };
-  const otherBans: OtherBan[] = [];
-  for (const e of entities) {
-    if (!e.otherAccounts) continue;
-    try {
-      const others = JSON.parse(e.otherAccounts);
-      if (Array.isArray(others)) {
-        others.forEach((acc: any) => { if (acc?.banned) otherBans.push({ entity: e, platform: acc.platform || "Other" }); });
-      }
-    } catch { /* ignore malformed otherAccounts */ }
-  }
+  // ── Platform ban groups (Twitter / Discord / Telegram / Other) ──────────
+  const groups: PlatformGroup[] = [
+    {
+      id: "twitter", label: "Twitter", icon: Twitter, color: "blue",
+      rows: entities
+        .filter(e => e.twitterBanned && e.twitterUsername)
+        .map(e => ({
+          id: `tw-${e.id}`,
+          title: `@${e.twitterUsername}`,
+          subtitle: `Entity: ${e.projectName || `#${e.id}`}`,
+          navigate: `/vault/entity/${e.id}`,
+        })),
+    },
+    {
+      id: "discord", label: "Discord", icon: MessageCircle, color: "indigo",
+      rows: entities
+        .filter(e => e.discordBanned && e.discordUsername)
+        .map(e => ({
+          id: `dc-${e.id}`,
+          title: e.discordUsername,
+          subtitle: `Entity: ${e.projectName || `#${e.id}`}`,
+          navigate: `/vault/entity/${e.id}`,
+        })),
+    },
+    {
+      id: "telegram", label: "Telegram", icon: Send, color: "cyan",
+      rows: entities
+        .filter(e => e.telegramBanned && (e.telegramUsername || e.telegramPhone))
+        .map(e => ({
+          id: `tg-${e.id}`,
+          title: e.telegramUsername ? `@${e.telegramUsername}` : e.telegramPhone,
+          subtitle: `Entity: ${e.projectName || `#${e.id}`}`,
+          navigate: `/vault/entity/${e.id}`,
+        })),
+    },
+    {
+      id: "other", label: "Other Platforms", icon: LayoutGrid, color: "zinc",
+      rows: entities.flatMap(e => {
+        if (!e.otherAccounts) return [];
+        try {
+          const arr = JSON.parse(e.otherAccounts);
+          if (!Array.isArray(arr)) return [];
+          return arr
+            .filter((a: any) => a?.banned)
+            .map((a: any, i: number) => ({
+              id: `ot-${e.id}-${i}`,
+              title: a.platform || "Other",
+              subtitle: `Entity: ${e.projectName || `#${e.id}`}`,
+              navigate: `/vault/entity/${e.id}`,
+            }));
+        } catch { return []; }
+      }),
+    },
+    {
+      id: "entity", label: "Whole Entities", icon: Shield, color: "red",
+      rows: entities
+        .filter(e => e.status === "banned")
+        .map(e => ({
+          id: `ent-${e.id}`,
+          title: e.projectName || `Entity #${e.id}`,
+          subtitle: `${e.category}${e.entitySerial ? ` · ${e.entitySerial}` : ""}`,
+          navigate: `/vault/entity/${e.id}`,
+        })),
+    },
+    {
+      id: "local", label: "Local Accounts", icon: User, color: "zinc",
+      rows: localAccounts
+        .filter(a => a.status === "banned")
+        .map(a => ({
+          id: `loc-${a.id}`,
+          title: a.label || a.username || a.email || `Account #${a.id}`,
+          subtitle: a.category,
+          navigate: `/vault/local/${a.id}`,
+        })),
+    },
+    {
+      id: "kyc", label: "KYC Entities", icon: ShieldCheck, color: "zinc",
+      rows: kycEntries
+        .filter(k => k.status === "banned")
+        .map(k => ({
+          id: `kyc-${k.id}`,
+          title: k.name || k.username || `KYC #${k.id}`,
+          subtitle: k.nid_number ? `NID: ${k.nid_number}` : k.category,
+          navigate: `/vault?tab=kyc`,
+        })),
+    },
+  ].filter(g => g.rows.length > 0);
 
   const loading = entitiesLoading || loadingOthers;
-  const total = bannedEntities.length + bannedLocal.length + bannedKyc.length + platformBans.length + otherBans.length;
-
-  const PLATFORM_ICON: Record<string, React.ElementType> = { twitter: Twitter, discord: MessageCircle, telegram: Send };
+  const total = groups.reduce((s, g) => s + g.rows.length, 0);
 
   return (
-    <VaultSectionPage title="Banned" description="Everything currently flagged as banned across the Vault" icon={Ban}>
+    <VaultSectionPage title="Banned" description="All banned accounts, grouped by platform" icon={Ban}>
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="w-5 h-5 text-primary animate-spin" />
@@ -122,84 +215,24 @@ export default function VaultBanned() {
         <VaultSectionEmptyState
           icon={Ban}
           title="Nothing banned"
-          note="Ban an entity, local account, KYC entity, or an individual linked platform account and it'll show up here."
+          note="Ban an entity, local account, KYC entity, or an individual linked platform account and it'll show up here, grouped by platform."
         />
       ) : (
-        <div className="space-y-5">
-          {bannedEntities.length > 0 && (
-            <div className="space-y-2">
-              <SectionHeader label="Entities" count={bannedEntities.length} />
-              {bannedEntities.map(e => (
+        <div className="space-y-4">
+          {groups.map(g => (
+            <div key={g.id} className="space-y-1.5">
+              <PlatformHeader icon={g.icon} label={g.label} count={g.rows.length} color={g.color} />
+              {g.rows.map(row => (
                 <BannedRow
-                  key={`entity-${e.id}`}
-                  icon={Shield}
-                  title={e.projectName || `Entity #${e.id}`}
-                  subtitle={`${e.category}${e.entitySerial ? ` · ${e.entitySerial}` : ""}`}
-                  onClick={() => navigate(`/vault/entity/${e.id}`)}
+                  key={row.id}
+                  icon={g.icon}
+                  title={row.title}
+                  subtitle={row.subtitle}
+                  onClick={() => navigate(row.navigate)}
                 />
               ))}
             </div>
-          )}
-
-          {platformBans.length > 0 && (
-            <div className="space-y-2">
-              <SectionHeader label="Linked Platform Accounts" count={platformBans.length} />
-              {platformBans.map((pb, i) => (
-                <BannedRow
-                  key={`platform-${pb.entity.id}-${pb.platform}-${i}`}
-                  icon={PLATFORM_ICON[pb.platform] ?? Shield}
-                  title={`${pb.platform[0].toUpperCase()}${pb.platform.slice(1)} · ${pb.handle}`}
-                  subtitle={`On entity: ${pb.entity.projectName || `#${pb.entity.id}`}`}
-                  onClick={() => navigate(`/vault/entity/${pb.entity.id}`)}
-                />
-              ))}
-            </div>
-          )}
-
-          {otherBans.length > 0 && (
-            <div className="space-y-2">
-              <SectionHeader label="Other Linked Accounts" count={otherBans.length} />
-              {otherBans.map((ob, i) => (
-                <BannedRow
-                  key={`other-${ob.entity.id}-${i}`}
-                  icon={Shield}
-                  title={ob.platform}
-                  subtitle={`On entity: ${ob.entity.projectName || `#${ob.entity.id}`}`}
-                  onClick={() => navigate(`/vault/entity/${ob.entity.id}`)}
-                />
-              ))}
-            </div>
-          )}
-
-          {bannedLocal.length > 0 && (
-            <div className="space-y-2">
-              <SectionHeader label="Local Accounts" count={bannedLocal.length} />
-              {bannedLocal.map(a => (
-                <BannedRow
-                  key={`local-${a.id}`}
-                  icon={User}
-                  title={a.label || a.username || a.email || `Account #${a.id}`}
-                  subtitle={a.category}
-                  onClick={() => navigate(`/vault/local/${a.id}`)}
-                />
-              ))}
-            </div>
-          )}
-
-          {bannedKyc.length > 0 && (
-            <div className="space-y-2">
-              <SectionHeader label="KYC Entities" count={bannedKyc.length} />
-              {bannedKyc.map(k => (
-                <BannedRow
-                  key={`kyc-${k.id}`}
-                  icon={ShieldCheck}
-                  title={k.name || k.username || `KYC #${k.id}`}
-                  subtitle={k.nid_number ? `NID: ${k.nid_number}` : k.category}
-                  onClick={() => navigate("/vault?tab=kyc")}
-                />
-              ))}
-            </div>
-          )}
+          ))}
         </div>
       )}
     </VaultSectionPage>

@@ -98,9 +98,11 @@ const VaultMailEntity        = lazy(() => import("@/pages/user/vault-mail-entity
 const VaultMailMessageDetail = lazy(() => import("@/pages/user/vault-mail-message-detail"));
 // Phase 4 — Vault Sidebar Restructure (Enroll / Security / Backup / Shared)
 const VaultEnroll       = lazy(() => import("@/pages/user/vault-enroll"));
-const VaultEnrollmentOverview = lazy(() => import("@/pages/user/vault-enrollment-overview"));
-const VaultEnrollmentProject  = lazy(() => import("@/pages/user/vault-enrollment-project"));
-const VaultEnrollmentLinked   = lazy(() => import("@/pages/user/vault-enrollment-linked"));
+const VaultEnrollmentOverview       = lazy(() => import("@/pages/user/vault-enrollment-overview"));
+const VaultEnrollmentProject        = lazy(() => import("@/pages/user/vault-enrollment-project"));
+const VaultEnrollmentProjectDetail  = lazy(() => import("@/pages/user/vault-enrollment-project-detail"));
+const VaultEnrollmentLinked         = lazy(() => import("@/pages/user/vault-enrollment-linked"));
+const VaultEnrollmentLinkedDetail   = lazy(() => import("@/pages/user/vault-enrollment-linked-detail"));
 const VaultSecurity     = lazy(() => import("@/pages/user/vault-security"));
 const VaultBackup       = lazy(() => import("@/pages/user/vault-backup"));
 const VaultShared       = lazy(() => import("@/pages/user/vault-shared"));
@@ -217,9 +219,12 @@ export const USER_ROUTES: RouteConfig[] = [
   // Phase 4 — Vault Sidebar Restructure (Enroll / Security / Backup / Shared)
   { path: "/vault/enroll",       component: VaultEnroll },
   // Enrollment hub — Overview / Project / Linked
-  { path: "/vault/enrollment/overview", component: VaultEnrollmentOverview },
-  { path: "/vault/enrollment/project",  component: VaultEnrollmentProject },
-  { path: "/vault/enrollment/linked",   component: VaultEnrollmentLinked },
+  { path: "/vault/enrollment/overview",          component: VaultEnrollmentOverview },
+  // Project list must come before /:id so the literal "project" isn't swallowed
+  { path: "/vault/enrollment/project",           component: VaultEnrollmentProject },
+  { path: "/vault/enrollment/project/:id",       component: VaultEnrollmentProjectDetail },
+  { path: "/vault/enrollment/linked",            component: VaultEnrollmentLinked },
+  { path: "/vault/enrollment/linked/:entityId",  component: VaultEnrollmentLinkedDetail },
   { path: "/vault/security",     component: VaultSecurity },
   { path: "/vault/backup",       component: VaultBackup },
   { path: "/vault/shared",       component: VaultShared },

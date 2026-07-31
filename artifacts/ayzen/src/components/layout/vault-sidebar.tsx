@@ -12,9 +12,14 @@ import { Link, useLocation } from "wouter";
 import {
   Wallet, ShieldCheck, Mail, BookKey,
   LayoutDashboard, FolderGit2, Link2,
-  Share2, Ban, Lock,
+  Share2, Ban, Lock, Home,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// ── TOP — dashboard ───────────────────────────────────────────────────────────
+const TOP_ITEMS = [
+  { href: "/vault", label: "Dashboard", icon: Home },
+] as const;
 
 // ── ACCESS — wallet / security tools ─────────────────────────────────────────
 const ACCESS_ITEMS = [
@@ -103,6 +108,7 @@ export function VaultSidebar() {
 
   return (
     <nav aria-label="Vault sections" className="w-full sm:w-52 flex-shrink-0 space-y-4">
+      <SidebarGroup label=""            items={TOP_ITEMS}     location={location} />
       <SidebarGroup label="Access"      items={ACCESS_ITEMS}  location={location} />
       <SidebarGroup label="Enrollment"  items={ENROLL_ITEMS}  location={location} />
       <SidebarGroup label="Other"       items={OTHER_ITEMS}   location={location} />

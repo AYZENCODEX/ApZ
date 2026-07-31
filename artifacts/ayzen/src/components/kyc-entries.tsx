@@ -14,7 +14,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { customFetch } from "@workspace/api-client-react";
 import { SchemaForm } from "@/components/schema/SchemaForm";
-import { KYC_FIELDS } from "@/config/fields/kyc-create";
+import { KYC_FIELDS, ACCOUNT_KYC_SUBTABS } from "@/config/fields/kyc-create";
 import { KYC_CATEGORIES, getKycCategoryMeta } from "@/config/vault-kyc";
 import { ShareEntityDialog, type ShareTarget } from "@/components/vault/share-entity-dialog";
 import { ManageSharesDialog } from "@/components/vault/manage-shares-dialog";
@@ -33,6 +33,18 @@ export interface KycEntry {
   email_password: string | null;
   email_2fa: string | null;
   email_backup_code: string | null;
+  account_2fa: string | null;
+  account_backup_code: string | null;
+  last_login_at: string | null;
+  account_buy_date: string | null;
+  account_create_date: string | null;
+  account_buy_price: number | null;
+  account_worth: number | null;
+  followers: string | null;
+  email_recovery: string | null;
+  email_recovery_password: string | null;
+  recovery_2fa: string | null;
+  recovery_backup_code: string | null;
   nid_number: string | null;
   name: string | null;
   father_name: string | null;
@@ -53,10 +65,20 @@ export interface KycEntry {
 }
 
 const EMPTY_FORM: Record<string, any> = {
-  category: "", username: "", accountPassword: "", notes: "",
-  email: "", emailPassword: "", email2fa: "", emailBackupCode: "",
+  category: "",
+  // Account · Main
+  username: "", accountPassword: "", notes: "",
+  email: "", emailPassword: "", account2fa: "", accountBackupCode: "",
+  email2fa: "", emailBackupCode: "",
+  // Account · Info
+  lastLoginAt: "", accountBuyDate: "", accountCreateDate: "",
+  accountBuyPrice: "", accountWorth: "", kycFollowers: "",
+  // Account · Recovery
+  emailRecovery: "", emailRecoveryPassword: "", recovery2fa: "", recoveryBackupCode: "",
+  // KYC · Info
   nidNumber: "", name: "", fatherName: "", birthDate: "",
   photo1Url: "", photo2Url: "",
+  // KYC · Seller
   platform: "", buyPrice: "", location: "", connection: "",
   contactNumber: "", buyDate: "", paid: false, sellerName: "", socialAccount: "",
 };
@@ -64,13 +86,32 @@ const EMPTY_FORM: Record<string, any> = {
 // Maps API's snake_case row -> the dialog form's camelCase keys
 function rowToForm(e: KycEntry): Record<string, any> {
   return {
-    category: e.category ?? "", username: e.username ?? "", accountPassword: e.account_password ?? "", notes: e.notes ?? "",
-    email: e.email ?? "", emailPassword: e.email_password ?? "", email2fa: e.email_2fa ?? "", emailBackupCode: e.email_backup_code ?? "",
+    category: e.category ?? "",
+    // Account · Main
+    username: e.username ?? "", accountPassword: e.account_password ?? "", notes: e.notes ?? "",
+    email: e.email ?? "", emailPassword: e.email_password ?? "",
+    account2fa: e.account_2fa ?? "", accountBackupCode: e.account_backup_code ?? "",
+    email2fa: e.email_2fa ?? "", emailBackupCode: e.email_backup_code ?? "",
+    // Account · Info
+    lastLoginAt: e.last_login_at ? String(e.last_login_at).slice(0, 10) : "",
+    accountBuyDate: e.account_buy_date ? String(e.account_buy_date).slice(0, 10) : "",
+    accountCreateDate: e.account_create_date ? String(e.account_create_date).slice(0, 10) : "",
+    accountBuyPrice: e.account_buy_price ?? "",
+    accountWorth: e.account_worth ?? "",
+    kycFollowers: e.followers ?? "",
+    // Account · Recovery
+    emailRecovery: e.email_recovery ?? "",
+    emailRecoveryPassword: e.email_recovery_password ?? "",
+    recovery2fa: e.recovery_2fa ?? "",
+    recoveryBackupCode: e.recovery_backup_code ?? "",
+    // KYC · Info
     nidNumber: e.nid_number ?? "", name: e.name ?? "", fatherName: e.father_name ?? "",
     birthDate: e.birth_date ? String(e.birth_date).slice(0, 10) : "",
     photo1Url: e.photo1_url ?? "", photo2Url: e.photo2_url ?? "",
-    platform: e.platform ?? "", buyPrice: e.buy_price ?? "", location: e.location ?? "", connection: e.connection ?? "",
-    contactNumber: e.contact_number ?? "", buyDate: e.buy_date ? String(e.buy_date).slice(0, 10) : "",
+    // KYC · Seller
+    platform: e.platform ?? "", buyPrice: e.buy_price ?? "", location: e.location ?? "",
+    connection: e.connection ?? "", contactNumber: e.contact_number ?? "",
+    buyDate: e.buy_date ? String(e.buy_date).slice(0, 10) : "",
     paid: !!e.paid, sellerName: e.seller_name ?? "", socialAccount: e.social_account ?? "",
   };
 }
@@ -81,6 +122,7 @@ const FORM_TABS = [
   { id: "kyc", label: "KYC", icon: ShieldCheck },
 ] as const;
 type FormTab = typeof FORM_TABS[number]["id"];
+type AccountSubTab = typeof ACCOUNT_KYC_SUBTABS[number]["id"];
 
 const KYC_SUBTABS = [
   { id: "info", label: "Info" },
@@ -89,8 +131,7 @@ const KYC_SUBTABS = [
 type KycSubTab = typeof KYC_SUBTABS[number]["id"];
 
 // Fields SchemaForm should render for the KYC · Seller sub-tab — "paid" is
-// excluded here since it renders as its own Yes/No pill pair below (see
-// config/fields/kyc-create.ts's note: SchemaForm has no toggle control).
+// excluded here since it renders as its own Yes/No pill pair below.
 const SELLER_SCHEMA_FIELDS = KYC_FIELDS.filter(f => f.tab === "kyc" && f.subtab === "seller" && f.key !== "paid");
 
 function CategoryBadge({ category }: { category: string }) {
@@ -113,6 +154,7 @@ function KycDialog({ open, editEntry, onClose, onSaved }: {
   const [step, setStep] = useState<"category" | "form">("category");
   const [form, setForm] = useState<Record<string, any>>(EMPTY_FORM);
   const [formTab, setFormTab] = useState<FormTab>("account");
+  const [acctSubTab, setAcctSubTab] = useState<AccountSubTab>("main");
   const [formSubTab, setFormSubTab] = useState<KycSubTab>("info");
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -141,6 +183,7 @@ function KycDialog({ open, editEntry, onClose, onSaved }: {
       setStep("category");
     }
     setFormTab("account");
+    setAcctSubTab("main");
     setFormSubTab("info");
   }, [open, editEntry]);
 
@@ -209,20 +252,38 @@ function KycDialog({ open, editEntry, onClose, onSaved }: {
         ) : (
           <>
             {/* Top-level tabs */}
-            <div className="px-5 pt-3 flex gap-1 flex-shrink-0 overflow-x-auto">
+            <div className="px-5 pt-3 flex gap-1 flex-shrink-0 overflow-x-auto border-b border-border/20 pb-2">
               {FORM_TABS.map(t => (
                 <button
                   key={t.id}
                   onClick={() => setFormTab(t.id)}
                   className={cn(
                     "px-3 py-1.5 rounded-md font-mono text-[10px] uppercase tracking-wider flex-shrink-0 transition-all flex items-center gap-1.5",
-                    formTab === t.id ? "bg-card text-primary shadow-sm font-bold" : "text-muted-foreground/50 hover:text-muted-foreground"
+                    formTab === t.id ? "bg-primary/10 text-primary font-bold" : "text-muted-foreground/50 hover:text-muted-foreground"
                   )}
                 >
                   <t.icon className="w-3 h-3" /> {t.label}
                 </button>
               ))}
             </div>
+
+            {/* Account sub-tabs (Main / Info / Recovery) */}
+            {formTab === "account" && (
+              <div className="px-5 pt-2 flex gap-1 flex-shrink-0 overflow-x-auto">
+                {ACCOUNT_KYC_SUBTABS.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => setAcctSubTab(t.id)}
+                    className={cn(
+                      "px-2.5 py-1 rounded font-mono text-[9px] uppercase tracking-wider flex-shrink-0 transition-all border",
+                      acctSubTab === t.id ? "border-primary/40 bg-primary/10 text-primary font-bold" : "border-border/30 text-muted-foreground/50 hover:text-muted-foreground"
+                    )}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* KYC sub-tabs */}
             {formTab === "kyc" && (
@@ -256,18 +317,43 @@ function KycDialog({ open, editEntry, onClose, onSaved }: {
                 )}
               </div>
 
-              {formTab === "account" && (
-                <SchemaForm fields={KYC_FIELDS} tab="account" form={form} onChange={setField} />
+              {/* Account · Main */}
+              {formTab === "account" && acctSubTab === "main" && (
+                <SchemaForm
+                  fields={KYC_FIELDS.filter(f => f.tab === "account" && f.subtab === "main")}
+                  form={form}
+                  onChange={setField}
+                />
               )}
 
+              {/* Account · Info */}
+              {formTab === "account" && acctSubTab === "info" && (
+                <SchemaForm
+                  fields={KYC_FIELDS.filter(f => f.tab === "account" && f.subtab === "info")}
+                  form={form}
+                  onChange={setField}
+                />
+              )}
+
+              {/* Account · Recovery */}
+              {formTab === "account" && acctSubTab === "recovery" && (
+                <SchemaForm
+                  fields={KYC_FIELDS.filter(f => f.tab === "account" && f.subtab === "recovery")}
+                  form={form}
+                  onChange={setField}
+                />
+              )}
+
+              {/* Email — IMAP/SMTP configuration */}
               {formTab === "email" && (
                 <div className="space-y-4">
-                  <SchemaForm fields={KYC_FIELDS} tab="email" form={form} onChange={setField} />
-                  {form.email && (
+                  {form.email ? (
                     <div className="rounded-lg border border-border/40">
                       <div className="px-3 py-2 border-b border-border/30 flex items-center gap-1.5">
                         <MailIcon className="w-3.5 h-3.5 text-primary" />
-                        <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Email Settings (IMAP/SMTP)</span>
+                        <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Email Settings (IMAP/SMTP) — {form.email}
+                        </span>
                       </div>
                       {emailAccountsLoading && emailAccounts.length === 0 ? (
                         <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-primary" /></div>
@@ -282,6 +368,10 @@ function KycDialog({ open, editEntry, onClose, onSaved }: {
                         />
                       )}
                     </div>
+                  ) : (
+                    <p className="font-mono text-xs text-muted-foreground/50 text-center py-6">
+                      Enter an email in Account → Main to configure IMAP/SMTP here.
+                    </p>
                   )}
                 </div>
               )}

@@ -1,23 +1,22 @@
 /**
  * vault-shared.tsx
  * ─────────────────────────────────────────────
- * Phase 6 — Shared tab.
+ * Vault → Other → Shared.
  *
- * Lists vault entities *this user has shared out* (GET /api/vault-shares/sent,
- * scoped to entityType "entity" — the same vault_shares table and endpoints
- * ManageSharesDialog already uses) and gives each one a working
- * Configure-Permission control (read-only vs full access) plus an
- * active/inactive toggle and a way to revoke the share entirely.
+ * Groups all outgoing shares by entity. Each entity card is clickable →
+ * navigates to /vault/shared/entity/:entityId where you can manage all
+ * shares for that specific entity.
  */
 import { useState, useEffect, useCallback } from "react";
-import { Share2, Loader2, Trash2 } from "lucide-react";
+import { useLocation } from "wouter";
+import { Share2, Loader2, Users, ChevronRight, Eye, Pencil } from "lucide-react";
 import { customFetch } from "@workspace/api-client-react";
 import { VaultSectionPage, VaultSectionEmptyState } from "@/components/layout/vault-sidebar";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
-interface SharedEntity {
+export interface SharedEntry {
   id: number;
   entityType: string;
   entityId: number;
@@ -29,16 +28,35 @@ interface SharedEntity {
   createdAt: string;
 }
 
+interface EntityGroup {
+  entityType: string;
+  entityId: number;
+  entityLabel: string;
+  shares: SharedEntry[];
+}
+
+function groupByEntity(shares: SharedEntry[]): EntityGroup[] {
+  const map = new Map<string, EntityGroup>();
+  for (const s of shares) {
+    const key = `${s.entityType}:${s.entityId}`;
+    if (!map.has(key)) {
+      map.set(key, { entityType: s.entityType, entityId: s.entityId, entityLabel: s.entityLabel, shares: [] });
+    }
+    map.get(key)!.shares.push(s);
+  }
+  return [...map.values()].sort((a, b) => a.entityLabel.localeCompare(b.entityLabel));
+}
+
 export default function VaultShared() {
-  const [shares, setShares] = useState<SharedEntity[]>([]);
+  const [, navigate] = useLocation();
+  const [shares, setShares] = useState<SharedEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState<number | null>(null);
   const { toast } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await customFetch<SharedEntity[]>("/api/vault-shares/sent?entityType=entity");
+      const data = await customFetch<SharedEntry[]>("/api/vault-shares/sent");
       setShares(Array.isArray(data) ? data : []);
     } catch {
       toast({ variant: "destructive", title: "Failed to load shared entities" });
@@ -49,103 +67,63 @@ export default function VaultShared() {
 
   useEffect(() => { load(); }, [load]);
 
-  const updatePermission = async (share: SharedEntity, permission: "view" | "edit") => {
-    if (permission === share.permission) return;
-    const prevPermission = share.permission;
-    setBusyId(share.id);
-    setShares(prev => prev.map(s => s.id === share.id ? { ...s, permission } : s));
-    try {
-      await customFetch(`/api/vault-shares/${share.id}`, { method: "PATCH", body: JSON.stringify({ permission }) });
-      toast({
-        title: "Permission updated",
-        description: `${share.sharedWithUsername} — ${permission === "edit" ? "Full access" : "Read-only"}`,
-      });
-    } catch {
-      setShares(prev => prev.map(s => s.id === share.id ? { ...s, permission: prevPermission } : s));
-      toast({ variant: "destructive", title: "Failed to update permission" });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const toggleActive = async (share: SharedEntity, next: boolean) => {
-    setBusyId(share.id);
-    setShares(prev => prev.map(s => s.id === share.id ? { ...s, isActive: next } : s));
-    try {
-      await customFetch(`/api/vault-shares/${share.id}`, { method: "PATCH", body: JSON.stringify({ isActive: next }) });
-      toast({ title: next ? "Access turned on" : "Access turned off", description: share.entityLabel });
-    } catch {
-      setShares(prev => prev.map(s => s.id === share.id ? { ...s, isActive: !next } : s));
-      toast({ variant: "destructive", title: "Failed to update" });
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const removeShare = async (share: SharedEntity) => {
-    setBusyId(share.id);
-    try {
-      await customFetch(`/api/vault-shares/${share.id}`, { method: "DELETE" });
-      setShares(prev => prev.filter(s => s.id !== share.id));
-      toast({ title: "Share removed", description: share.entityLabel });
-    } catch {
-      toast({ variant: "destructive", title: "Failed to remove share" });
-    } finally {
-      setBusyId(null);
-    }
-  };
+  const groups = groupByEntity(shares);
 
   return (
-    <VaultSectionPage title="Shared" description="Sharing & permissions" icon={Share2}>
+    <VaultSectionPage title="Shared" description="Entities you've shared — tap to manage" icon={Share2}>
       {loading ? (
         <div className="flex items-center justify-center py-16"><Loader2 className="w-5 h-5 text-primary animate-spin" /></div>
-      ) : shares.length === 0 ? (
+      ) : groups.length === 0 ? (
         <VaultSectionEmptyState
           icon={Share2}
           title="Nothing shared yet"
-          note="Entities you share from the Vault entity list will appear here with their permission settings."
+          note="Entities you share from the Vault entity list will appear here, grouped by entity."
         />
       ) : (
         <div className="space-y-2">
-          {shares.map(s => (
-            <div key={s.id} className="bg-card border border-card-border rounded-lg p-3 flex items-center gap-3 flex-wrap">
-              <div className="min-w-0 flex-1">
-                <p className="font-mono text-xs font-bold truncate">{s.entityLabel}</p>
-                <p className="font-mono text-[9px] text-muted-foreground/50 truncate">
-                  shared with <span className="text-foreground/70">{s.sharedWithUsername}</span>
-                </p>
+          {groups.map(g => {
+            const activeCount = g.shares.filter(s => s.isActive).length;
+            const editCount   = g.shares.filter(s => s.permission === "edit").length;
+            return (
+              <div
+                key={`${g.entityType}:${g.entityId}`}
+                onClick={() => navigate(`/vault/shared/${g.entityType}/${g.entityId}`)}
+                className="bg-card border border-card-border rounded-lg px-3 py-3 flex items-center gap-3 cursor-pointer hover:border-primary/30 transition-all group"
+              >
+                {/* Icon */}
+                <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/15 transition-colors">
+                  <Users className="w-3.5 h-3.5 text-primary" />
+                </div>
+
+                {/* Label + share summary */}
+                <div className="min-w-0 flex-1">
+                  <p className="font-mono text-xs font-bold text-foreground truncate">{g.entityLabel}</p>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span className="font-mono text-[9px] text-muted-foreground/50">
+                      {g.shares.length} share{g.shares.length !== 1 ? "s" : ""}
+                    </span>
+                    {editCount > 0 && (
+                      <Badge variant="outline" className={cn("font-mono text-[8px] px-1.5 gap-1", "text-amber-400 border-amber-400/30 bg-amber-400/5")}>
+                        <Pencil className="w-2 h-2" />{editCount} edit
+                      </Badge>
+                    )}
+                    {(g.shares.length - editCount) > 0 && (
+                      <Badge variant="outline" className="font-mono text-[8px] px-1.5 gap-1 text-blue-400 border-blue-400/30 bg-blue-400/5">
+                        <Eye className="w-2 h-2" />{g.shares.length - editCount} view
+                      </Badge>
+                    )}
+                    {activeCount < g.shares.length && (
+                      <Badge variant="outline" className="font-mono text-[8px] px-1.5 text-muted-foreground/50 border-border/30">
+                        {g.shares.length - activeCount} inactive
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                <ChevronRight className="w-4 h-4 text-muted-foreground/30 flex-shrink-0 group-hover:text-primary/40 transition-colors" />
               </div>
-
-              <Select
-                value={s.permission}
-                onValueChange={(v: "view" | "edit") => updatePermission(s, v)}
-                disabled={busyId === s.id}
-              >
-                <SelectTrigger className="font-mono text-[10px] h-8 w-[120px] flex-shrink-0">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="view" className="font-mono text-xs">Read-only</SelectItem>
-                  <SelectItem value="edit" className="font-mono text-xs">Full access</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Switch
-                checked={s.isActive}
-                disabled={busyId === s.id}
-                onCheckedChange={(v) => toggleActive(s, v)}
-              />
-
-              <button
-                onClick={() => removeShare(s)}
-                disabled={busyId === s.id}
-                className="p-1 rounded text-muted-foreground/30 hover:text-red-400 transition-colors flex-shrink-0"
-                title="Remove share"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </VaultSectionPage>
