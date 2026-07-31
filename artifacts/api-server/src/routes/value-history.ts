@@ -18,10 +18,20 @@ router.get("/value-history/pnl", requireAuth, async (req, res): Promise<void> =>
   const sourceIdFilter = req.query.sourceId && !isNaN(Number(req.query.sourceId)) ? `AND source_id = ${Number(req.query.sourceId)}` : "";
   const targetFilter = req.query.target ? `AND target = ${safe(String(req.query.target))}` : "";
   try {
+    // When viewing aggregate PNL (no sourceId), exclude rows that belong to
+    // banned vault or local entities — banned entities should not contribute
+    // to the global P&L view.
+    const bannedExcludeClause = (!sourceIdFilter)
+      ? `AND NOT EXISTS (
+           SELECT 1 FROM vault_entries ve
+           WHERE ve.user_id = ${userId} AND ve.id = source_id AND source_type = 'vault' AND ve.status = 'banned'
+         )`
+      : "";
     const rows = await db.execute(sql.raw(`
       SELECT source_type, source_id, target, label, value, buy_value, note, created_at
       FROM value_history WHERE user_id = ${userId} AND metric = ${safe(metric)}
       ${sourceTypeFilter} ${sourceIdFilter} ${targetFilter}
+      ${bannedExcludeClause}
       AND created_at >= NOW() - INTERVAL '${period} days'
       ORDER BY created_at DESC
     `));

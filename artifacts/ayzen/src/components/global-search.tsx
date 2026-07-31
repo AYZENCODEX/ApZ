@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
-import { Search, FolderGit2, Users, CheckSquare, Shield, X, Loader2, ArrowRight, Smartphone, ShieldCheck, Gamepad2, Mail } from "lucide-react";
+import { Search, FolderGit2, Users, CheckSquare, Shield, X, Loader2, ArrowRight, Smartphone, ShieldCheck, Gamepad2, Mail, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isVaultUnlocked } from "@/lib/vault-lock";
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
@@ -30,9 +31,22 @@ export function GlobalSearch({ isAdmin }: { isAdmin?: boolean }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(false);
+  // Security gate: vault results are shown only when the vault is unlocked
+  const [vaultPinSet, setVaultPinSet] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const [, navigate] = useLocation();
   const debouncedQuery = useDebounce(query, 300);
+
+  // Check whether a vault PIN is configured so we know if we need to gate results
+  useEffect(() => {
+    const token = localStorage.getItem("ayzen_token") ?? "";
+    fetch(`${BASE}/api/vault/security/status`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setVaultPinSet(!!d.vaultPinSet); })
+      .catch(() => {});
+  }, []);
+
+  const vaultAccessible = !vaultPinSet || isVaultUnlocked();
 
   const total = results ? results.projects.length + results.users.length + results.tasks.length + results.entities.length
     + results.local.length + results.kyc.length + results.game.length + results.mail.length : 0;
@@ -195,7 +209,18 @@ export function GlobalSearch({ isAdmin }: { isAdmin?: boolean }) {
                 </div>
               )}
 
-              {results.entities.length > 0 && (
+              {/* Vault results are gated behind the vault PIN when one is configured */}
+              {!vaultAccessible && (results.entities.length > 0 || results.local.length > 0 || results.kyc.length > 0 || results.game.length > 0) && (
+                <div className="mx-4 my-2 flex items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2.5">
+                  <Lock className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                  <div>
+                    <p className="font-mono text-[10px] font-bold text-amber-400">Vault is locked</p>
+                    <p className="font-mono text-[9px] text-muted-foreground/50">Unlock your vault to view matching vault entries.</p>
+                  </div>
+                </div>
+              )}
+
+              {vaultAccessible && results.entities.length > 0 && (
                 <div>
                   <div className="px-4 py-1.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1.5">
                     <Shield className="w-3 h-3" /> Vault · Entity
@@ -219,7 +244,7 @@ export function GlobalSearch({ isAdmin }: { isAdmin?: boolean }) {
                 </div>
               )}
 
-              {results.local.length > 0 && (
+              {vaultAccessible && results.local.length > 0 && (
                 <div>
                   <div className="px-4 py-1.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1.5">
                     <Smartphone className="w-3 h-3" /> Vault · Local
@@ -243,7 +268,7 @@ export function GlobalSearch({ isAdmin }: { isAdmin?: boolean }) {
                 </div>
               )}
 
-              {results.kyc.length > 0 && (
+              {vaultAccessible && results.kyc.length > 0 && (
                 <div>
                   <div className="px-4 py-1.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1.5">
                     <ShieldCheck className="w-3 h-3" /> Vault · KYC
@@ -267,7 +292,7 @@ export function GlobalSearch({ isAdmin }: { isAdmin?: boolean }) {
                 </div>
               )}
 
-              {results.game.length > 0 && (
+              {vaultAccessible && results.game.length > 0 && (
                 <div>
                   <div className="px-4 py-1.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1.5">
                     <Gamepad2 className="w-3 h-3" /> Vault · Game
@@ -291,7 +316,7 @@ export function GlobalSearch({ isAdmin }: { isAdmin?: boolean }) {
                 </div>
               )}
 
-              {results.mail.length > 0 && (
+              {vaultAccessible && results.mail.length > 0 && (
                 <div>
                   <div className="px-4 py-1.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40 flex items-center gap-1.5">
                     <Mail className="w-3 h-3" /> Mail Hub

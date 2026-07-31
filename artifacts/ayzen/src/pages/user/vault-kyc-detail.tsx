@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   ChevronLeft, Shield, ShieldCheck, Loader2, KeyRound,
   Edit2, Trash2, Eye, EyeOff, Copy, Check, Ban, ShieldOff, AlertTriangle,
   User, Mail, Calendar, Building2, Phone, MapPin, Wifi, CreditCard,
-  CheckCircle2, XCircle, TrendingUp,
+  CheckCircle2, XCircle, TrendingUp, RefreshCw, Zap, DollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { customFetch } from "@workspace/api-client-react";
@@ -21,6 +23,7 @@ const TABS = [
   { id: "credentials", label: "Credentials" },
   { id: "kyc",         label: "KYC Info" },
   { id: "purchase",    label: "Purchase" },
+  { id: "profile",     label: "Profile" },
 ] as const;
 type KycDetailTab = typeof TABS[number]["id"];
 
@@ -129,6 +132,14 @@ export default function VaultKycDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [banPending, setBanPending] = useState(false);
 
+  // Exchange Profile tab state
+  const [exApiKey, setExApiKey]       = useState("");
+  const [exApiSecret, setExApiSecret] = useState("");
+  const [savingKeys, setSavingKeys]   = useState(false);
+  const [balanceLoading, setBalanceLoading] = useState(false);
+  const [balanceData, setBalanceData] = useState<any>(null);
+  const [showSecret, setShowSecret]   = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -159,6 +170,32 @@ export default function VaultKycDetail() {
     } catch {
       toast({ variant: "destructive", title: "Delete failed" });
     } finally { setDeleting(false); setConfirmDelete(false); }
+  };
+
+  const fetchBalance = useCallback(async (id: number) => {
+    setBalanceLoading(true);
+    setBalanceData(null);
+    try {
+      const data = await customFetch<any>(`/api/exchange-balance/${id}`);
+      setBalanceData(data);
+    } catch {
+      setBalanceData({ error: "Failed to reach exchange" });
+    } finally { setBalanceLoading(false); }
+  }, []);
+
+  const saveExchangeKeys = async () => {
+    if (!entry) return;
+    setSavingKeys(true);
+    try {
+      await customFetch<unknown>(`/api/kyc-entries/${entry.id}/exchange-keys`, {
+        method: "PATCH",
+        body: JSON.stringify({ apiKey: exApiKey || undefined, apiSecret: exApiSecret || undefined }),
+      });
+      toast({ title: "API keys saved (encrypted)" });
+      fetchBalance(entry.id);
+    } catch {
+      toast({ variant: "destructive", title: "Failed to save keys" });
+    } finally { setSavingKeys(false); }
   };
 
   const handleToggleBan = async () => {
@@ -444,6 +481,149 @@ export default function VaultKycDetail() {
                     <img src={entry.photo2_url} alt="ID Photo 2" className="w-24 h-24 object-cover rounded-lg border border-border/40 group-hover:border-primary/40 transition-colors" />
                     <p className="font-mono text-[9px] text-muted-foreground/50 mt-1 text-center">Photo 2</p>
                   </a>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Profile Tab — Exchange profile name + API sync + real-time balance */}
+      {tab === "profile" && (
+        <div className="space-y-4">
+          {/* Profile identity card */}
+          <div className="bg-card border border-card-border rounded-xl p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+                <User className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-mono text-sm font-bold text-foreground">{entry.name || entry.username || `KYC #${entry.id}`}</p>
+                {entry.platform && <p className="font-mono text-[10px] text-muted-foreground/50">{entry.platform}</p>}
+              </div>
+              {entry.username && (
+                <div className="ml-auto font-mono text-[10px] text-muted-foreground/60 bg-muted/30 px-2 py-1 rounded border border-border/30">
+                  @{entry.username}
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {entry.name && (
+                <div className="bg-muted/20 rounded-lg px-3 py-2 border border-border/30">
+                  <div className="font-mono text-[9px] text-muted-foreground/50 uppercase">Full Name</div>
+                  <div className="font-mono text-xs text-foreground/80 truncate">{entry.name}</div>
+                </div>
+              )}
+              {entry.platform && (
+                <div className="bg-muted/20 rounded-lg px-3 py-2 border border-border/30">
+                  <div className="font-mono text-[9px] text-muted-foreground/50 uppercase">Exchange</div>
+                  <div className="font-mono text-xs text-foreground/80 truncate">{entry.platform}</div>
+                </div>
+              )}
+              {entry.email && (
+                <div className="bg-muted/20 rounded-lg px-3 py-2 border border-border/30">
+                  <div className="font-mono text-[9px] text-muted-foreground/50 uppercase">Email</div>
+                  <div className="font-mono text-xs text-foreground/80 truncate">{entry.email}</div>
+                </div>
+              )}
+              {entry.category && (
+                <div className="bg-muted/20 rounded-lg px-3 py-2 border border-border/30">
+                  <div className="font-mono text-[9px] text-muted-foreground/50 uppercase">Category</div>
+                  <div className="font-mono text-xs text-foreground/80">{entry.category}</div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* API Key Config */}
+          <div className="bg-card border border-card-border rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-border/30 font-mono text-xs font-bold uppercase tracking-widest text-amber-400 flex items-center gap-2">
+              <Zap className="w-3.5 h-3.5" /> Exchange API Keys
+            </div>
+            <div className="px-4 py-4 space-y-3">
+              <p className="font-mono text-[10px] text-muted-foreground/50 leading-relaxed">
+                Keys are encrypted at rest (AES-256). Only the server decrypts them when fetching live balances — they never leave unencrypted.
+              </p>
+              <div className="space-y-2">
+                <Label className="font-mono text-[10px] uppercase text-muted-foreground/60">API Key</Label>
+                <Input
+                  value={exApiKey}
+                  onChange={e => setExApiKey(e.target.value)}
+                  placeholder="Enter API key..."
+                  className="font-mono text-xs h-8 bg-input"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="font-mono text-[10px] uppercase text-muted-foreground/60">API Secret</Label>
+                <div className="relative">
+                  <Input
+                    type={showSecret ? "text" : "password"}
+                    value={exApiSecret}
+                    onChange={e => setExApiSecret(e.target.value)}
+                    placeholder="Enter API secret..."
+                    className="font-mono text-xs h-8 bg-input pr-8"
+                  />
+                  <button
+                    onClick={() => setShowSecret(s => !s)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-primary transition-colors"
+                  >
+                    {showSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={saveExchangeKeys} disabled={savingKeys} className="font-mono text-xs gap-1.5">
+                  {savingKeys ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                  Save Keys
+                </Button>
+                <Button
+                  size="sm" variant="outline" onClick={() => entry && fetchBalance(entry.id)}
+                  disabled={balanceLoading} className="font-mono text-xs gap-1.5"
+                >
+                  {balanceLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                  Fetch Balance
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Live Balance */}
+          {(balanceData || balanceLoading) && (
+            <div className="bg-card border border-card-border rounded-xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-border/30 font-mono text-xs font-bold uppercase tracking-widest text-emerald-400 flex items-center gap-2">
+                <DollarSign className="w-3.5 h-3.5" /> Live Portfolio
+                {balanceData?.exchange && <span className="font-normal text-muted-foreground/50 normal-case">· {balanceData.exchange}</span>}
+              </div>
+              <div className="px-4 py-3">
+                {balanceLoading && <div className="flex items-center gap-2 py-4"><Loader2 className="w-4 h-4 animate-spin text-primary" /><span className="font-mono text-xs text-muted-foreground/50">Fetching live data...</span></div>}
+                {!balanceLoading && balanceData?.error && (
+                  <div className="flex items-start gap-2 p-3 bg-red-400/5 rounded-lg border border-red-400/20">
+                    <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+                    <p className="font-mono text-[10px] text-red-400">{balanceData.error}</p>
+                  </div>
+                )}
+                {!balanceLoading && !balanceData?.hasKeys && !balanceData?.error && (
+                  <p className="font-mono text-xs text-muted-foreground/40 py-4 text-center">No API keys configured — add keys above to see live balance.</p>
+                )}
+                {!balanceLoading && balanceData?.hasKeys && !balanceData?.error && (
+                  balanceData.balances?.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {balanceData.balances.slice(0, 15).map((b: any, i: number) => (
+                        <div key={i} className="flex items-center justify-between py-1.5 border-b border-border/15 last:border-0">
+                          <span className="font-mono text-xs font-bold text-foreground/80">{b.asset}</span>
+                          <div className="text-right">
+                            <div className="font-mono text-xs text-emerald-400">{parseFloat(b.free).toFixed(6)} free</div>
+                            {parseFloat(b.locked) > 0 && <div className="font-mono text-[9px] text-amber-400">{parseFloat(b.locked).toFixed(6)} locked</div>}
+                          </div>
+                        </div>
+                      ))}
+                      {balanceData.balances.length > 15 && (
+                        <p className="font-mono text-[9px] text-muted-foreground/40 text-center pt-1">+{balanceData.balances.length - 15} more assets</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="font-mono text-xs text-muted-foreground/40 py-4 text-center">No non-zero balances found.</p>
+                  )
                 )}
               </div>
             </div>

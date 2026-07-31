@@ -979,6 +979,8 @@ router.delete("/vault/:id", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
   const userId = req.user!.userId;
   await db.delete(vaultEntriesTable).where(and(eq(vaultEntriesTable.id, id), eq(vaultEntriesTable.userId, userId)));
+  // Purge all value/follower history so the entity's P&L disappears immediately
+  await db.execute(sql`DELETE FROM value_history WHERE user_id = ${userId} AND source_type = 'vault' AND source_id = ${id}`);
   broadcastEvent("vault_updated", { action: "deleted", entryId: id });
   logVaultActivity(id, userId, "deleted");
   // Sync: delist any marketplace listing for this entry, prune orphaned ROI rows

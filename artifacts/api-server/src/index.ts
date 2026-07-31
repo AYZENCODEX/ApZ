@@ -1722,6 +1722,9 @@ const MIGRATIONS = [
   "ALTER TABLE kyc_entries ADD COLUMN IF NOT EXISTS email_recovery_password TEXT",
   "ALTER TABLE kyc_entries ADD COLUMN IF NOT EXISTS recovery_2fa TEXT",
   "ALTER TABLE kyc_entries ADD COLUMN IF NOT EXISTS recovery_backup_code TEXT",
+  // Exchange API integration — encrypted key pair stored on KYC entries for real-time balance sync
+  "ALTER TABLE kyc_entries ADD COLUMN IF NOT EXISTS exchange_api_key TEXT",
+  "ALTER TABLE kyc_entries ADD COLUMN IF NOT EXISTS exchange_api_secret TEXT",
   // New credential fields — account-level 2FA/backup + per-platform email2fa/backup/recovery
   "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS account_2fa TEXT",
   "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS account_backup_code TEXT",

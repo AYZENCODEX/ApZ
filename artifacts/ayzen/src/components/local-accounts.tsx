@@ -472,6 +472,7 @@ function AccountFormDialog({
   // already set) but can still jump back via "Change platform".
   const [step, setStep] = useState<"category" | "form">(editAccount ? "form" : "category");
   const [activeSection, setActiveSection] = useState<"creds" | "dates" | "value" | "platform" | "points">("creds");
+  const [credSubTab, setCredSubTab] = useState<"main" | "recovery">("main");
   const [pointsData, setPointsData] = useState<{ entries: any[]; total: number }>({ entries: [], total: 0 });
   const [pointsLoading, setPointsLoading] = useState(false);
   const [addingPoint, setAddingPoint] = useState(false);
@@ -668,10 +669,41 @@ function AccountFormDialog({
               ))}
             </div>
 
-          {/* Tab 1: Credentials — driven by LOCAL_ACCOUNT_FIELDS (tab: "creds") */}
+          {/* Tab 1: Credentials — split into Main and Recovery sub-tabs */}
           {activeSection === "creds" && (
             <div className="space-y-2">
-              <SchemaForm fields={LOCAL_ACCOUNT_FIELDS} tab="creds" form={form} onChange={onFieldChange} />
+              {/* Main / Recovery sub-tabs */}
+              <div className="flex gap-1">
+                {(["main", "recovery"] as const).map(st => (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => setCredSubTab(st)}
+                    className={cn(
+                      "px-3 py-1 rounded font-mono text-[9px] uppercase tracking-wider border transition-all",
+                      credSubTab === st
+                        ? "border-primary/40 bg-primary/10 text-primary font-bold"
+                        : "border-border/30 text-muted-foreground/50 hover:text-muted-foreground"
+                    )}
+                  >
+                    {st}
+                  </button>
+                ))}
+              </div>
+
+              {credSubTab === "main" && (
+                <SchemaForm
+                  fields={LOCAL_ACCOUNT_FIELDS.filter(f => f.tab === "creds" && ["username", "password", "email", "email_password"].includes(f.key))}
+                  tab="creds" form={form} onChange={onFieldChange}
+                />
+              )}
+
+              {credSubTab === "recovery" && (
+                <SchemaForm
+                  fields={LOCAL_ACCOUNT_FIELDS.filter(f => f.tab === "creds" && !["username", "password", "email", "email_password"].includes(f.key))}
+                  tab="creds" form={form} onChange={onFieldChange}
+                />
+              )}
             </div>
           )}
 

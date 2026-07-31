@@ -88,6 +88,7 @@ import apiKeysRouter from "./api-keys";
 import valueHistoryRouter from "./value-history";
 import vaultSharesRouter from "./vault-shares";
 import vaultEntityLinksRouter from "./vault-entity-links";
+import exchangeApiRouter from "./exchange-api";
 
 const router: IRouter = Router();
 
@@ -180,5 +181,6 @@ router.use(layoutRouter);
 router.use(marketplaceUsdtRouter);
 router.use(apiKeysRouter);
 router.use(valueHistoryRouter);
+router.use(exchangeApiRouter);
 
 export default router;

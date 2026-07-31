@@ -112,6 +112,7 @@ function StatCard({ label, value, color }: { label: string; value: string; color
 }
 
 type DetailTab = "credentials" | "stats" | "dates" | "points";
+type CredSubTab = "main" | "recovery";
 
 const TABS: { id: DetailTab; label: string }[] = [
   { id: "credentials", label: "Credentials" },
@@ -140,6 +141,7 @@ function VaultLocalDetailContent() {
   const [account, setAccount] = useState<LocalAccount | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<DetailTab>("credentials");
+  const [credSubTab, setCredSubTab] = useState<CredSubTab>("main");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [valueDialogOpen, setValueDialogOpen] = useState(false);
@@ -397,22 +399,52 @@ function VaultLocalDetailContent() {
       {/* Credentials Tab */}
       {tab === "credentials" && (
         <div className="bg-card border border-card-border rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-border/30 font-mono text-xs font-bold uppercase tracking-widest text-cyan-400">
-            Credentials
+          <div className="px-4 py-3 border-b border-border/30 font-mono text-xs font-bold uppercase tracking-widest text-cyan-400 flex items-center justify-between">
+            <span>Credentials</span>
           </div>
-          <div className="px-4 py-2">
-            <SecretField label="Username" value={account.username} />
-            <SecretField label="Email" value={account.email} />
-            <SecretField label="Password" value={account.password} />
-            <SecretField label="Rec. Email" value={account.recovery_email} />
-            <SecretField label="Rec. Pass" value={account.recovery_email_password} />
-            <SecretField label="2FA" value={account.twofa} />
-            <SecretField label="Rec. 2FA" value={account.recovery_email_twofa} />
-            <SecretField label="Backup Codes" value={account.backup_codes} />
-            {!account.username && !account.email && !account.password && (
-              <p className="font-mono text-xs text-muted-foreground/40 py-4 text-center">No credentials stored</p>
-            )}
+
+          {/* Main / Recovery sub-tabs */}
+          <div className="flex gap-1 px-4 pt-3 pb-1">
+            {(["main", "recovery"] as CredSubTab[]).map(st => (
+              <button
+                key={st}
+                onClick={() => setCredSubTab(st)}
+                className={cn(
+                  "px-3 py-1 rounded font-mono text-[9px] uppercase tracking-wider border transition-all",
+                  credSubTab === st
+                    ? "border-primary/40 bg-primary/10 text-primary font-bold"
+                    : "border-border/30 text-muted-foreground/50 hover:text-muted-foreground"
+                )}
+              >
+                {st}
+              </button>
+            ))}
           </div>
+
+          {credSubTab === "main" && (
+            <div className="px-4 py-2">
+              <SecretField label="Username" value={account.username} />
+              <SecretField label="Email" value={account.email} />
+              <SecretField label="Password" value={account.password} />
+              {!account.username && !account.email && !account.password && (
+                <p className="font-mono text-xs text-muted-foreground/40 py-4 text-center">No main credentials stored</p>
+              )}
+            </div>
+          )}
+
+          {credSubTab === "recovery" && (
+            <div className="px-4 py-2">
+              <SecretField label="Rec. Email"  value={account.recovery_email} />
+              <SecretField label="Rec. Pass"   value={account.recovery_email_password} />
+              <SecretField label="2FA"         value={account.twofa} />
+              <SecretField label="Rec. 2FA"    value={account.recovery_email_twofa} />
+              <SecretField label="Backup Codes" value={account.backup_codes} />
+              {!account.recovery_email && !account.twofa && !account.backup_codes && (
+                <p className="font-mono text-xs text-muted-foreground/40 py-4 text-center">No recovery credentials stored</p>
+              )}
+            </div>
+          )}
+
           {account.notes && (
             <div className="px-4 pb-4 border-t border-border/20 mt-2">
               <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/50 mb-2 mt-3">Notes</p>

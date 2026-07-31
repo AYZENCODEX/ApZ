@@ -153,6 +153,8 @@ router.delete("/local-accounts/:id", requireAuth, async (req, res): Promise<void
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
   try {
     await db.execute(sql.raw(`DELETE FROM local_accounts WHERE id = ${id} AND user_id = ${userId}`));
+    // Purge all value history so P&L for this account disappears immediately
+    await db.execute(sql`DELETE FROM value_history WHERE user_id = ${userId} AND source_type = 'local' AND source_id = ${id}`);
     syncOnLocalAccountDelete(id).catch(() => {});
     res.json({ success: true });
   } catch (err: any) {
