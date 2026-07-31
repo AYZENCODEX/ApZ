@@ -134,6 +134,13 @@ type KycSubTab = typeof KYC_SUBTABS[number]["id"];
 // excluded here since it renders as its own Yes/No pill pair below.
 const SELLER_SCHEMA_FIELDS = KYC_FIELDS.filter(f => f.tab === "kyc" && f.subtab === "seller" && f.key !== "paid");
 
+export function KycDialog({ open, editEntry, onClose, onSaved }: {
+  open: boolean; editEntry: KycEntry | null; onClose: () => void; onSaved: () => void;
+}) {
+  // Re-export as named export so other pages can import it directly.
+  return <KycDialogInner open={open} editEntry={editEntry} onClose={onClose} onSaved={onSaved} />;
+}
+
 function CategoryBadge({ category }: { category: string }) {
   const meta = getKycCategoryMeta(category);
   return (
@@ -148,7 +155,7 @@ function CategoryBadge({ category }: { category: string }) {
 }
 
 // ─── Create / Edit dialog ───────────────────────────────────────────────────
-function KycDialog({ open, editEntry, onClose, onSaved }: {
+function KycDialogInner({ open, editEntry, onClose, onSaved }: {
   open: boolean; editEntry: KycEntry | null; onClose: () => void; onSaved: () => void;
 }) {
   const [step, setStep] = useState<"category" | "form">("category");
@@ -592,7 +599,7 @@ export default function KycEntries() {
         </div>
       )}
 
-      <KycDialog open={dialogOpen} editEntry={editEntry} onClose={() => setDialogOpen(false)} onSaved={load} />
+      <KycDialogInner open={dialogOpen} editEntry={editEntry} onClose={() => setDialogOpen(false)} onSaved={load} />
 
       <ShareEntityDialog
         open={shareItems !== null}

@@ -334,7 +334,7 @@ function VaultLocalDetailContent() {
   const roi = calcROI(account.account_worth, account.buy_price);
   const age = calcAge(account.account_create_date);
   const displayName = account.label || account.username || account.email || `Account #${account.id}`;
-  const totalPoints = points.reduce((s, p) => s + p.amount, 0);
+  const totalPoints = points.reduce((s, p) => s + Number(p.amount), 0);
 
   return (
     <div className="space-y-5 page-enter max-w-2xl mx-auto">

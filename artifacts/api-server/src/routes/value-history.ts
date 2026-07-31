@@ -44,7 +44,14 @@ router.get("/value-history/pnl", requireAuth, async (req, res): Promise<void> =>
       current.startBuyValue = Number(row.buy_value);
       current.entries += 1;
     }
-    const items = [...grouped.values()].map(item => ({ ...item, pnl: item.endValue - item.endBuyValue - (item.startValue - item.startBuyValue) }));
+    const items = [...grouped.values()].map(item => ({
+      ...item,
+      // If only 1 data point in the period, show absolute profit (worth − cost).
+      // Otherwise show the change in profit over the period.
+      pnl: item.entries === 1
+        ? item.endValue - item.endBuyValue
+        : item.endValue - item.endBuyValue - (item.startValue - item.startBuyValue),
+    }));
     res.json({ period, metric, history, items, totalPnl: items.reduce((sum, item) => sum + item.pnl, 0) });
   } catch (err: any) { res.status(500).json({ error: "Unable to load value history", detail: err?.message }); }
 });

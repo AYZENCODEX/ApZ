@@ -90,6 +90,18 @@ router.post("/kyc-entries", requireAuth, async (req, res): Promise<void> => {
   }
 });
 
+// ─── GET /kyc-entries/:id — fetch single KYC entity ───────────────────────────
+router.get("/kyc-entries/:id", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.user!.userId;
+  const id = parseInt(req.params.id as string);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  try {
+    const result = await db.execute(sql.raw(`SELECT * FROM kyc_entries WHERE id = ${id} AND user_id = ${userId} LIMIT 1`));
+    if (!result.rows.length) { res.status(404).json({ error: "Not found" }); return; }
+    res.json(decryptRow(result.rows[0] as any, KYC_SENSITIVE_FIELDS));
+  } catch (err: any) { res.status(500).json({ error: "DB error", detail: err?.message }); }
+});
+
 // ─── PUT /kyc-entries/:id — update KYC entity ─────────────────────────────────
 router.put("/kyc-entries/:id", requireAuth, async (req, res): Promise<void> => {
   const userId = req.user!.userId;

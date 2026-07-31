@@ -138,8 +138,8 @@ export default function ProjectCompare() {
           ))}
         </div>
       ) : (
-        <div className="bg-card border border-card-border rounded-lg overflow-hidden">
-          <Table>
+        <div className="bg-card border border-card-border rounded-lg overflow-x-auto">
+          <Table className="min-w-[500px]">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="sticky left-0 bg-card w-32" />

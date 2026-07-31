@@ -7,12 +7,16 @@
  *   ACCESS     — Wallet, 2FA, Mail Hub, Backup Code
  *   ENROLLMENT — Overview (roll-up), Project (drill-down), Linked (graph)
  *   OTHER      — Security, Shared, Banned
+ *
+ * Mobile: collapses into a horizontal scrollable pill-nav.
+ * Desktop (sm+): vertical sidebar list.
  */
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Wallet, ShieldCheck, Mail, BookKey,
   LayoutDashboard, FolderGit2, Link2,
-  Share2, Ban, Lock, Home, Shield,
+  Share2, Ban, Lock, Home, Shield, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +48,15 @@ const OTHER_ITEMS = [
   { href: "/vault/banned",   label: "Banned",   icon: Ban },
 ] as const;
 
+const ALL_ITEMS = [...TOP_ITEMS, ...ACCESS_ITEMS, ...ENROLL_ITEMS, ...OTHER_ITEMS];
+
+function matchHref(href: string, location: string) {
+  return href.includes("?")
+    ? location === href.split("?")[0]
+    : location === href || location.startsWith(href + "/");
+}
+
+// ── Desktop sidebar item ───────────────────────────────────────────────────────
 function SidebarItem({
   href, label, icon: Icon, active,
 }: {
@@ -83,11 +96,6 @@ function SidebarGroup({
   items: readonly { href: string; label: string; icon: React.ElementType }[];
   location: string;
 }) {
-  const matchHref = (href: string) =>
-    href.includes("?")
-      ? location === href.split("?")[0]
-      : location === href || location.startsWith(href + "/");
-
   return (
     <div className="space-y-1">
       <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40 px-3 pb-0.5">
@@ -97,9 +105,36 @@ function SidebarGroup({
         <SidebarItem
           key={item.href}
           {...item}
-          active={matchHref(item.href)}
+          active={matchHref(item.href, location)}
         />
       ))}
+    </div>
+  );
+}
+
+// ── Mobile horizontal scrollable nav ─────────────────────────────────────────
+function MobileNav({ location }: { location: string }) {
+  return (
+    <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none -mx-0.5 px-0.5">
+      {ALL_ITEMS.map(item => {
+        const active = matchHref(item.href, location);
+        const Icon = item.icon;
+        return (
+          <Link key={item.href} href={item.href}>
+            <div
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-mono text-[10px] uppercase tracking-wider border flex-shrink-0 cursor-pointer transition-all",
+                active
+                  ? "bg-primary/10 text-primary border-primary/30 font-bold"
+                  : "text-muted-foreground/60 border-border/20 hover:bg-muted/20 hover:text-foreground bg-card"
+              )}
+            >
+              <Icon className="w-3 h-3" />
+              {item.label}
+            </div>
+          </Link>
+        );
+      })}
     </div>
   );
 }
@@ -108,12 +143,19 @@ export function VaultSidebar() {
   const [location] = useLocation();
 
   return (
-    <nav aria-label="Vault sections" className="w-full sm:w-52 flex-shrink-0 space-y-4">
-      <SidebarGroup label="Account"      items={TOP_ITEMS}     location={location} />
-      <SidebarGroup label="Access"      items={ACCESS_ITEMS}  location={location} />
-      <SidebarGroup label="Enrollment"  items={ENROLL_ITEMS}  location={location} />
-      <SidebarGroup label="Other"       items={OTHER_ITEMS}   location={location} />
-    </nav>
+    <>
+      {/* Mobile: horizontal scroll nav */}
+      <nav aria-label="Vault sections" className="sm:hidden">
+        <MobileNav location={location} />
+      </nav>
+      {/* Desktop: vertical sidebar */}
+      <nav aria-label="Vault sections" className="hidden sm:block w-52 flex-shrink-0 space-y-4">
+        <SidebarGroup label="Account"      items={TOP_ITEMS}     location={location} />
+        <SidebarGroup label="Access"      items={ACCESS_ITEMS}  location={location} />
+        <SidebarGroup label="Enrollment"  items={ENROLL_ITEMS}  location={location} />
+        <SidebarGroup label="Other"       items={OTHER_ITEMS}   location={location} />
+      </nav>
+    </>
   );
 }
 
@@ -132,7 +174,7 @@ export function VaultSectionPage({
   return (
     <div className="space-y-5 page-enter">
       <div>
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start justify-between gap-2 flex-wrap">
           <h1 className="text-2xl font-bold font-mono tracking-tighter uppercase flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
               <Icon className="w-4 h-4 text-primary" />

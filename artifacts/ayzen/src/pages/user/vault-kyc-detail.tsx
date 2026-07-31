@@ -2,24 +2,70 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   ChevronLeft, Shield, ShieldCheck, Loader2, KeyRound,
   Edit2, Trash2, Eye, EyeOff, Copy, Check, Ban, ShieldOff, AlertTriangle,
   User, Mail, Calendar, Building2, Phone, MapPin, Wifi, CreditCard,
-  CheckCircle2, XCircle,
+  CheckCircle2, XCircle, TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { customFetch } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import type { KycEntry } from "@/components/kyc-entries";
+import { KycDialog } from "@/components/kyc-entries";
 
 const TABS = [
+  { id: "overview",    label: "Overview" },
   { id: "credentials", label: "Credentials" },
   { id: "kyc",         label: "KYC Info" },
   { id: "purchase",    label: "Purchase" },
 ] as const;
 type KycDetailTab = typeof TABS[number]["id"];
+
+// ─── Health checks for KYC entities ─────────────────────────────────────────
+const KYC_HEALTH_CHECKS = [
+  { key: "username",         label: "Username",      icon: User,       color: "text-cyan-400",    getValue: (e: KycEntry) => !!e.username },
+  { key: "email",            label: "Email",         icon: Mail,       color: "text-sky-400",     getValue: (e: KycEntry) => !!e.email },
+  { key: "account_password", label: "Password",      icon: Shield,     color: "text-violet-400",  getValue: (e: KycEntry) => !!e.account_password },
+  { key: "email_2fa",        label: "2FA",           icon: ShieldCheck,color: "text-emerald-400", getValue: (e: KycEntry) => !!e.email_2fa },
+  { key: "email_backup_code",label: "Backup Code",   icon: KeyRound,   color: "text-amber-400",   getValue: (e: KycEntry) => !!e.email_backup_code },
+  { key: "name",             label: "Full Name",     icon: User,       color: "text-primary",     getValue: (e: KycEntry) => !!e.name },
+  { key: "nid_number",       label: "NID Number",    icon: CreditCard, color: "text-orange-400",  getValue: (e: KycEntry) => !!e.nid_number },
+  { key: "birth_date",       label: "Birth Date",    icon: Calendar,   color: "text-rose-400",    getValue: (e: KycEntry) => !!e.birth_date },
+  { key: "contact_number",   label: "Contact",       icon: Phone,      color: "text-teal-400",    getValue: (e: KycEntry) => !!e.contact_number },
+  { key: "platform",         label: "Platform",      icon: Building2,  color: "text-blue-400",    getValue: (e: KycEntry) => !!e.platform },
+  { key: "buy_price",        label: "Buy Price",     icon: CreditCard, color: "text-amber-400",   getValue: (e: KycEntry) => e.buy_price != null && Number(e.buy_price) > 0 },
+  { key: "paid",             label: "Payment Done",  icon: CheckCircle2,color: "text-emerald-400",getValue: (e: KycEntry) => !!e.paid },
+];
+
+function kycHealthScore(e: KycEntry): number {
+  const filled = KYC_HEALTH_CHECKS.filter(c => c.getValue(e)).length;
+  return Math.round((filled / KYC_HEALTH_CHECKS.length) * 100);
+}
+function healthColor(score: number) {
+  if (score >= 80) return "text-emerald-400";
+  if (score >= 50) return "text-amber-400";
+  return "text-red-400";
+}
+function healthLabel(score: number): { label: string; color: string } {
+  if (score >= 80) return { label: "Healthy", color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" };
+  if (score >= 50) return { label: "Partial",  color: "text-amber-400 bg-amber-400/10 border-amber-400/20" };
+  return { label: "At Risk", color: "text-red-400 bg-red-400/10 border-red-400/20" };
+}
+
+// ─── Risk indicators ─────────────────────────────────────────────────────────
+function getRisks(e: KycEntry): string[] {
+  const risks: string[] = [];
+  if (!e.email_2fa)         risks.push("No 2FA — account vulnerable");
+  if (!e.email_backup_code) risks.push("No backup code — recovery blocked");
+  if (!e.nid_number)        risks.push("NID missing — KYC incomplete");
+  if (!e.account_password)  risks.push("Password not stored");
+  if (e.status === "banned") risks.push("Entity is banned");
+  if (!e.paid)              risks.push("Payment not confirmed");
+  return risks;
+}
 
 function calcAge(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
@@ -76,26 +122,26 @@ export default function VaultKycDetail() {
 
   const [entry, setEntry] = useState<KycEntry | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<KycDetailTab>("credentials");
+  const [tab, setTab] = useState<KycDetailTab>("overview");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [accessOpen, setAccessOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [banPending, setBanPending] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      // Try individual endpoint first, fall back to list filter
-      try {
-        const single = await customFetch<KycEntry>(`/api/kyc-entries/${params.id}`);
-        setEntry(single);
-        return;
-      } catch {}
-      const list = await customFetch<KycEntry[]>("/api/kyc-entries");
-      const found = (Array.isArray(list) ? list : []).find(e => String(e.id) === params.id);
-      setEntry(found ?? null);
+      const single = await customFetch<KycEntry>(`/api/kyc-entries/${params.id}`);
+      setEntry(single);
     } catch {
-      setEntry(null);
+      try {
+        const list = await customFetch<KycEntry[]>("/api/kyc-entries");
+        const found = (Array.isArray(list) ? list : []).find(e => String(e.id) === params.id);
+        setEntry(found ?? null);
+      } catch {
+        setEntry(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -155,6 +201,11 @@ export default function VaultKycDetail() {
 
   const displayName = entry.name || entry.username || `KYC #${entry.id}`;
   const isBanned = entry.status === "banned";
+  const score = kycHealthScore(entry);
+  const { label: healthLbl, color: badgeColor } = healthLabel(score);
+  const risks = getRisks(entry);
+  const missing = KYC_HEALTH_CHECKS.filter(c => !c.getValue(entry));
+  const present = KYC_HEALTH_CHECKS.filter(c => c.getValue(entry));
 
   return (
     <div className="space-y-5 page-enter max-w-2xl mx-auto">
@@ -164,24 +215,28 @@ export default function VaultKycDetail() {
           <ChevronLeft className="w-3.5 h-3.5" /> Back to Vault
         </Button>
 
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
               <ShieldCheck className="w-5 h-5 text-primary" />
             </div>
-            <div>
-              <h1 className="text-xl font-bold font-mono tracking-tighter">{displayName}</h1>
-              <div className="flex items-center gap-2 mt-1">
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold font-mono tracking-tighter truncate">{displayName}</h1>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <Badge variant="outline" className="font-mono text-[9px] px-1.5">{entry.category}</Badge>
                 {entry.platform && <span className="font-mono text-[10px] text-muted-foreground/50">{entry.platform}</span>}
                 {isBanned && <Badge variant="outline" className="font-mono text-[9px] px-1.5 border-red-400/30 text-red-400 bg-red-400/5">Banned</Badge>}
+                <Badge variant="outline" className={cn("font-mono text-[9px] px-1.5 border", badgeColor)}>{healthLbl} {score}%</Badge>
               </div>
             </div>
           </div>
-          {/* Action buttons — Access at top */}
-          <div className="flex items-center gap-1.5 flex-shrink-0">
+          {/* Action buttons */}
+          <div className="flex items-center gap-1.5 flex-wrap">
             <Button variant="outline" size="sm" onClick={() => setAccessOpen(true)} className="font-mono text-xs gap-1.5">
               <KeyRound className="w-3.5 h-3.5" /> Access
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)} className="font-mono text-xs gap-1.5">
+              <Edit2 className="w-3.5 h-3.5" /> Edit
             </Button>
             <Button
               variant="outline"
@@ -210,7 +265,7 @@ export default function VaultKycDetail() {
             key={t.id}
             onClick={() => setTab(t.id)}
             className={cn(
-              "flex-1 py-1.5 rounded-md font-mono text-[10px] uppercase tracking-wider transition-all flex-shrink-0",
+              "flex-1 py-1.5 rounded-md font-mono text-[10px] uppercase tracking-wider transition-all flex-shrink-0 min-w-fit px-2",
               tab === t.id ? "bg-card text-primary shadow-sm font-bold" : "text-muted-foreground/50 hover:text-muted-foreground"
             )}
           >
@@ -218,6 +273,103 @@ export default function VaultKycDetail() {
           </button>
         ))}
       </div>
+
+      {/* Overview Tab — Health + Risk */}
+      {tab === "overview" && (
+        <div className="space-y-4">
+          {/* Health score card */}
+          <div className="bg-card border border-card-border rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                <span className="font-mono text-sm font-bold text-primary">KYC Health</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={cn("font-mono text-xl font-bold", healthColor(score))}>{score}%</span>
+                <Badge variant="outline" className={cn("font-mono text-[9px] px-1.5 border", badgeColor)}>{healthLbl}</Badge>
+              </div>
+            </div>
+            <Progress value={score} className="h-2 mb-4" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {KYC_HEALTH_CHECKS.map(check => {
+                const has = check.getValue(entry);
+                const Icon = check.icon;
+                return (
+                  <div
+                    key={check.key}
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg px-3 py-2 border",
+                      has ? "bg-emerald-400/5 border-emerald-400/15" : "bg-red-400/5 border-red-400/15"
+                    )}
+                  >
+                    <Icon className={cn("w-3.5 h-3.5 flex-shrink-0", has ? check.color : "text-red-400/60")} />
+                    <span className={cn("font-mono text-[10px] truncate", has ? "text-foreground/80" : "text-muted-foreground/50")}>{check.label}</span>
+                    <div className="ml-auto flex-shrink-0">
+                      {has ? <CheckCircle2 className="w-3 h-3 text-emerald-400" /> : <XCircle className="w-3 h-3 text-red-400/60" />}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {missing.length > 0 && (
+              <div className="mt-4 p-3 rounded-lg bg-amber-400/5 border border-amber-400/20">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-amber-400 font-bold">Missing ({missing.length})</span>
+                </div>
+                <p className="font-mono text-[10px] text-muted-foreground/60 leading-relaxed">
+                  {missing.map(m => m.label).join(" · ")}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Risk checker */}
+          {risks.length > 0 && (
+            <div className="bg-card border border-card-border rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="w-4 h-4 text-red-400" />
+                <span className="font-mono text-sm font-bold text-red-400">Risk Checker</span>
+                <Badge variant="outline" className="font-mono text-[9px] px-1.5 border-red-400/30 text-red-400 bg-red-400/5 ml-auto">{risks.length} risk{risks.length !== 1 ? "s" : ""}</Badge>
+              </div>
+              <div className="space-y-2">
+                {risks.map((r, i) => (
+                  <div key={i} className="flex items-center gap-2.5 rounded-lg bg-red-400/5 border border-red-400/15 px-3 py-2">
+                    <XCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                    <span className="font-mono text-[11px] text-red-300/80">{r}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {risks.length === 0 && (
+            <div className="flex items-center gap-2.5 rounded-xl bg-emerald-400/5 border border-emerald-400/20 px-4 py-3">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              <span className="font-mono text-xs text-emerald-400">No risks detected — KYC entity looks complete</span>
+            </div>
+          )}
+
+          {/* Quick summary */}
+          <div className="bg-card border border-card-border rounded-xl p-4">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50 mb-3">Summary</p>
+            <div className="flex flex-wrap gap-2">
+              {entry.username && <span className="font-mono text-[9px] px-2 py-1 rounded-full bg-cyan-400/10 text-cyan-400 border border-cyan-400/20">ACCOUNT</span>}
+              {entry.email && <span className="font-mono text-[9px] px-2 py-1 rounded-full bg-sky-400/10 text-sky-400 border border-sky-400/20">EMAIL</span>}
+              {entry.email_2fa && <span className="font-mono text-[9px] px-2 py-1 rounded-full bg-emerald-400/10 text-emerald-400 border border-emerald-400/20">2FA</span>}
+              {entry.nid_number && <span className="font-mono text-[9px] px-2 py-1 rounded-full bg-violet-400/10 text-violet-400 border border-violet-400/20">NID STORED</span>}
+              {entry.photo1_url && <span className="font-mono text-[9px] px-2 py-1 rounded-full bg-orange-400/10 text-orange-400 border border-orange-400/20">PHOTOS</span>}
+              <span className={cn(
+                "font-mono text-[9px] px-2 py-1 rounded-full border flex items-center gap-1",
+                entry.paid ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/20" : "bg-red-400/10 text-red-400 border-red-400/20"
+              )}>
+                {entry.paid ? <CheckCircle2 className="w-2.5 h-2.5" /> : <XCircle className="w-2.5 h-2.5" />}
+                {entry.paid ? "PAID" : "UNPAID"}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Credentials Tab */}
       {tab === "credentials" && (
@@ -232,6 +384,12 @@ export default function VaultKycDetail() {
             <SecretField label="Email Pass" value={entry.email_password} />
             <SecretField label="2FA Secret" value={entry.email_2fa} />
             <SecretField label="Backup Code" value={entry.email_backup_code} />
+            <SecretField label="Acct. 2FA" value={entry.account_2fa} />
+            <SecretField label="Acct. Backup" value={entry.account_backup_code} />
+            <SecretField label="Rec. Email" value={entry.email_recovery} />
+            <SecretField label="Rec. Pass" value={entry.email_recovery_password} />
+            <SecretField label="Rec. 2FA" value={entry.recovery_2fa} />
+            <SecretField label="Rec. Backup" value={entry.recovery_backup_code} />
             {!entry.username && !entry.email && !entry.account_password && (
               <p className="font-mono text-xs text-muted-foreground/40 py-4 text-center">No credentials stored</p>
             )}
@@ -319,6 +477,14 @@ export default function VaultKycDetail() {
           </div>
         </div>
       )}
+
+      {/* Edit Dialog */}
+      <KycDialog
+        open={editOpen}
+        editEntry={entry}
+        onClose={() => setEditOpen(false)}
+        onSaved={() => { setEditOpen(false); load(); }}
+      />
 
       {/* Access Dialog — quick credential reveal */}
       <Dialog open={accessOpen} onOpenChange={setAccessOpen}>

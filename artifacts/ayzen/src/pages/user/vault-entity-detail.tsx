@@ -379,14 +379,14 @@ function VaultEntityDetailContent() {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0 mt-8">
+        <div className="flex items-center gap-1.5 flex-wrap mt-2 sm:mt-8">
           <ValueEntryButton onClick={() => openValueDialog(undefined)} />
           <FollowerEntryButton onClick={() => openFollowerDialog(undefined)} />
           <Button variant="outline" size="sm" onClick={() => navigate(`/vault/entity/${entry.id}/access`)} className="font-mono text-xs gap-1.5">
             <KeyRound className="w-3.5 h-3.5" /> Access
           </Button>
           <Button variant="outline" size="sm" onClick={() => setEmailSettingsOpen(true)} className="font-mono text-xs gap-1.5">
-            <Settings2 className="w-3.5 h-3.5" /> Email Settings
+            <Settings2 className="w-3.5 h-3.5" /> Email
           </Button>
           <Button variant="outline" size="sm" onClick={() => navigate(`/vault?tab=entity&editId=${entry.id}`)} className="font-mono text-xs gap-1.5">
             <Edit2 className="w-3.5 h-3.5" /> Edit
@@ -436,8 +436,8 @@ function VaultEntityDetailContent() {
           </div>
           <EntityDashboardTabs vaultEntryId={entry.id} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <ValuePnlPanel compact metric="value" title="Value P&L" />
-            <ValuePnlPanel compact metric="follower" title="Follower P&L" />
+            <ValuePnlPanel compact metric="value" title="Value P&L" sourceType="vault" sourceId={entry.id} />
+            <ValuePnlPanel compact metric="follower" title="Follower P&L" sourceType="vault" sourceId={entry.id} />
           </div>
         </div>
       )}
