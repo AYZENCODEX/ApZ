@@ -131,13 +131,13 @@ function PlatformBanToggle({ banned, pending, onClick }: { banned: boolean; pend
   );
 }
 
-type PlatformSubTab = "details" | "info" | "follower";
+type PlatformSubTab = "main" | "recovery" | "info";
 
-function PlatformSubTabs({ subTab, onChange, showFollower }: { subTab: PlatformSubTab; onChange: (t: PlatformSubTab) => void; showFollower: boolean }) {
+function PlatformSubTabs({ subTab, onChange }: { subTab: PlatformSubTab; onChange: (t: PlatformSubTab) => void }) {
   const items: { id: PlatformSubTab; label: string }[] = [
-    { id: "details", label: "View Details" },
+    { id: "main", label: "Main" },
+    { id: "recovery", label: "Recovery" },
     { id: "info", label: "Info" },
-    ...(showFollower ? [{ id: "follower" as const, label: "Follower" }] : []),
   ];
   return (
     <div className="flex gap-1 mb-1">
@@ -210,7 +210,7 @@ function VaultEntityDetailContent() {
   const { token } = useAuth() as any;
 
   const [tab, setTab] = useState<DetailTab>("dashboard");
-  const [platformSubTab, setPlatformSubTab] = useState<"details" | "info" | "follower">("details");
+  const [platformSubTab, setPlatformSubTab] = useState<PlatformSubTab>("main");
   const [qrAddress, setQrAddress] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [valueDialogOpen, setValueDialogOpen] = useState(false);
@@ -388,7 +388,7 @@ function VaultEntityDetailContent() {
           <Button variant="outline" size="sm" onClick={() => setEmailSettingsOpen(true)} className="font-mono text-xs gap-1.5">
             <Settings2 className="w-3.5 h-3.5" /> Email Settings
           </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate(`/vault?tab=entity`)} className="font-mono text-xs gap-1.5">
+          <Button variant="outline" size="sm" onClick={() => navigate(`/vault?tab=entity&editId=${entry.id}`)} className="font-mono text-xs gap-1.5">
             <Edit2 className="w-3.5 h-3.5" /> Edit
           </Button>
           <Button
@@ -414,7 +414,7 @@ function VaultEntityDetailContent() {
           return (
             <button
               key={t}
-              onClick={() => { setTab(t); setPlatformSubTab("details"); }}
+              onClick={() => { setTab(t); setPlatformSubTab("main"); }}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-md font-mono text-[10px] uppercase tracking-wider flex-shrink-0 transition-all",
                 tab === t ? "bg-card text-primary shadow-sm font-bold" : "text-muted-foreground/50 hover:text-muted-foreground"
@@ -586,23 +586,82 @@ function VaultEntityDetailContent() {
 
       {/* Credentials Tab */}
       {tab === "credentials" && (
-        <Section title="Email Credentials" color="text-cyan-400">
-          <CredRow label="Email" value={entry.email} />
-          <CredRow label="Password" value={entry.emailPassword} />
-          <CredRow label="Recovery" value={entry.emailRecovery} />
-          <CredRow label="Rec. Pass" value={entry.emailRecoveryPassword} />
-          {!entry.email && (
-            <p className="font-mono text-xs text-muted-foreground/40 py-4 text-center">No email credentials added</p>
+        <div className="space-y-3">
+          <PlatformSubTabs subTab={platformSubTab} onChange={setPlatformSubTab} />
+
+          {platformSubTab === "main" && (
+            <Section title="Account Credentials" color="text-cyan-400">
+              <CredRow label="Username" value={entry.username} />
+              <CredRow label="Acct. Pass" value={entry.accountPassword} />
+              <CredRow label="Email" value={entry.email} />
+              <CredRow label="Email Pass" value={entry.emailPassword} />
+              <CredRow label="Acct. 2FA" value={entry.account2fa} />
+              <CredRow label="Acct. Backup" value={entry.accountBackupCode} />
+              <CredRow label="Email 2FA" value={entry.email2fa} />
+              <CredRow label="Email Backup" value={entry.emailBackupCode} />
+              {!entry.username && !entry.email && (
+                <p className="font-mono text-xs text-muted-foreground/40 py-4 text-center">No credentials added</p>
+              )}
+            </Section>
           )}
-        </Section>
+
+          {platformSubTab === "recovery" && (
+            <Section title="Account Recovery" color="text-cyan-400">
+              <CredRow label="Rec. Email" value={entry.emailRecovery} />
+              <CredRow label="Rec. Pass" value={entry.emailRecoveryPassword} />
+              <CredRow label="Rec. 2FA" value={entry.recovery2fa} />
+              <CredRow label="Rec. Backup" value={entry.recoveryBackupCode} />
+              {!entry.emailRecovery && (
+                <p className="font-mono text-xs text-muted-foreground/40 py-4 text-center">No recovery info added</p>
+              )}
+            </Section>
+          )}
+
+          {platformSubTab === "info" && (
+            <Section title="Account Info" color="text-cyan-400">
+              <div className="flex items-center justify-between py-2 border-b border-border/20">
+                <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">Last Login</span>
+                <span className="font-mono text-xs text-foreground/80">{entry.lastLoginAt ? new Date(entry.lastLoginAt).toLocaleDateString() : "—"}</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-border/20">
+                <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">Create Date</span>
+                <span className="font-mono text-xs text-foreground/80">{entry.createDate ? new Date(entry.createDate).toLocaleDateString() : "—"}</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-border/20">
+                <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">Buy Date</span>
+                <span className="font-mono text-xs text-foreground/80">{entry.buyDate ? new Date(entry.buyDate).toLocaleDateString() : "—"}</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-border/20">
+                <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">Buy Value</span>
+                <span className="font-mono text-xs font-bold text-cyan-400">${entry.currentBuyValue || 0}</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-border/20">
+                <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">Worth</span>
+                <span className="font-mono text-xs font-bold text-amber-400">${entry.currentValue || 0}</span>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">Followers</span>
+                <span className="font-mono text-xs text-foreground/80">{entry.followers || "—"}</span>
+              </div>
+              <div className="pt-3 flex gap-2 flex-wrap">
+                <ValueEntryButton onClick={() => openValueDialog(undefined)} />
+                <FollowerEntryButton onClick={() => openFollowerDialog(undefined)} />
+              </div>
+              <div className="pt-3 space-y-2">
+                <ValuePnlPanel metric="value" />
+                <ValuePnlPanel metric="follower" />
+              </div>
+            </Section>
+          )}
+        </div>
       )}
 
       {/* Twitter Tab */}
       {tab === "twitter" && (
         <div className="space-y-3">
-          <PlatformSubTabs subTab={platformSubTab} onChange={setPlatformSubTab} showFollower />
+          <PlatformSubTabs subTab={platformSubTab} onChange={setPlatformSubTab} />
 
-          {platformSubTab === "details" && (
+          {platformSubTab === "main" && (
             <Section
               title="Twitter / X"
               color="text-sky-400"
@@ -614,14 +673,27 @@ function VaultEntityDetailContent() {
               <CredRow label="Password" value={entry.twitterPassword} />
               <CredRow label="Email" value={entry.twitterEmail} />
               <CredRow label="Email Pass" value={entry.twitterEmailPassword} />
-              <CredRow label="2FA" value={entry.twitter2fa} />
-              <CredRow label="Rec. Email" value={entry.twitterEmailRecovery} />
-              <CredRow label="Rec. Pass" value={entry.twitterEmailRecoveryPassword} />
+              <CredRow label="Acct. 2FA" value={entry.twitter2fa} />
+              <CredRow label="Acct. Backup" value={entry.twitterAccountBackupCode} />
+              <CredRow label="Email 2FA" value={entry.twitterEmail2fa} />
+              <CredRow label="Email Backup" value={entry.twitterEmailBackupCode} />
               {!entry.twitterUsername && (
                 <p className="font-mono text-xs text-muted-foreground/40 py-4 text-center">No Twitter account linked</p>
               )}
               {entry.twitterNotes && (
                 <p className="font-mono text-xs text-muted-foreground leading-relaxed py-3 border-t border-border/20 mt-2">{entry.twitterNotes}</p>
+              )}
+            </Section>
+          )}
+
+          {platformSubTab === "recovery" && (
+            <Section title="Twitter / X · Recovery" color="text-sky-400">
+              <CredRow label="Rec. Email" value={entry.twitterEmailRecovery} />
+              <CredRow label="Rec. Pass" value={entry.twitterEmailRecoveryPassword} />
+              <CredRow label="Rec. 2FA" value={entry.twitterRecovery2fa} />
+              <CredRow label="Rec. Backup" value={entry.twitterRecoveryBackupCode} />
+              {!entry.twitterEmailRecovery && (
+                <p className="font-mono text-xs text-muted-foreground/40 py-4 text-center">No recovery info added</p>
               )}
             </Section>
           )}
@@ -645,6 +717,10 @@ function VaultEntityDetailContent() {
                 <span className="font-mono text-xs text-foreground/80">{entry.twitterAge || "—"}</span>
               </div>
               <div className="flex items-center justify-between py-2 border-b border-border/20">
+                <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">Followers</span>
+                <span className="font-mono text-xs text-foreground/80">{entry.twitterFollowers || "—"}</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-border/20">
                 <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">Buy Value</span>
                 <span className="font-mono text-xs font-bold text-cyan-400">${entry.twitterBuyValue || 0}</span>
               </div>
@@ -652,20 +728,13 @@ function VaultEntityDetailContent() {
                 <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">Worth</span>
                 <span className="font-mono text-xs font-bold text-amber-400">${entry.twitterWorth || 0}</span>
               </div>
-              <div className="pt-3">
+              <div className="pt-3 flex gap-2 flex-wrap">
                 <ValueEntryButton onClick={() => openValueDialog("twitter")} />
-              </div>
-            </Section>
-          )}
-
-          {platformSubTab === "follower" && (
-            <Section title="Twitter / X · Followers" color="text-sky-400">
-              <div className="flex items-center justify-between py-2">
-                <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">Followers</span>
-                <span className="font-mono text-xs text-foreground/80">{entry.twitterFollowers || "—"}</span>
-              </div>
-              <div className="pt-3">
                 <FollowerEntryButton onClick={() => openFollowerDialog("twitter")} />
+              </div>
+              <div className="pt-3 space-y-2">
+                <ValuePnlPanel metric="value" title="Twitter Value P&L" />
+                <ValuePnlPanel metric="follower" title="Twitter Followers History" />
               </div>
             </Section>
           )}
@@ -675,9 +744,9 @@ function VaultEntityDetailContent() {
       {/* Discord Tab */}
       {tab === "discord" && (
         <div className="space-y-3">
-          <PlatformSubTabs subTab={platformSubTab} onChange={setPlatformSubTab} showFollower />
+          <PlatformSubTabs subTab={platformSubTab} onChange={setPlatformSubTab} />
 
-          {platformSubTab === "details" && (
+          {platformSubTab === "main" && (
             <Section
               title="Discord"
               color="text-indigo-400"
@@ -689,14 +758,27 @@ function VaultEntityDetailContent() {
               <CredRow label="Password" value={entry.discordPassword} />
               <CredRow label="Email" value={entry.discordEmail} />
               <CredRow label="Email Pass" value={entry.discordEmailPassword} />
-              <CredRow label="2FA" value={entry.discord2fa} />
-              <CredRow label="Rec. Email" value={entry.discordEmailRecovery} />
-              <CredRow label="Rec. Pass" value={entry.discordEmailRecoveryPassword} />
+              <CredRow label="Acct. 2FA" value={entry.discord2fa} />
+              <CredRow label="Acct. Backup" value={entry.discordAccountBackupCode} />
+              <CredRow label="Email 2FA" value={entry.discordEmail2fa} />
+              <CredRow label="Email Backup" value={entry.discordEmailBackupCode} />
               {!entry.discordUsername && (
                 <p className="font-mono text-xs text-muted-foreground/40 py-4 text-center">No Discord account linked</p>
               )}
               {entry.discordNotes && (
                 <p className="font-mono text-xs text-muted-foreground leading-relaxed py-3 border-t border-border/20 mt-2">{entry.discordNotes}</p>
+              )}
+            </Section>
+          )}
+
+          {platformSubTab === "recovery" && (
+            <Section title="Discord · Recovery" color="text-indigo-400">
+              <CredRow label="Rec. Email" value={entry.discordEmailRecovery} />
+              <CredRow label="Rec. Pass" value={entry.discordEmailRecoveryPassword} />
+              <CredRow label="Rec. 2FA" value={entry.discordRecovery2fa} />
+              <CredRow label="Rec. Backup" value={entry.discordRecoveryBackupCode} />
+              {!entry.discordEmailRecovery && (
+                <p className="font-mono text-xs text-muted-foreground/40 py-4 text-center">No recovery info added</p>
               )}
             </Section>
           )}
@@ -720,6 +802,10 @@ function VaultEntityDetailContent() {
                 <span className="font-mono text-xs text-foreground/80">{entry.discordAge || "—"}</span>
               </div>
               <div className="flex items-center justify-between py-2 border-b border-border/20">
+                <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">Members</span>
+                <span className="font-mono text-xs text-foreground/80">{entry.discordFollowers || "—"}</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-border/20">
                 <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">Buy Value</span>
                 <span className="font-mono text-xs font-bold text-cyan-400">${entry.discordBuyValue || 0}</span>
               </div>
@@ -727,20 +813,13 @@ function VaultEntityDetailContent() {
                 <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">Worth</span>
                 <span className="font-mono text-xs font-bold text-amber-400">${entry.discordWorth || 0}</span>
               </div>
-              <div className="pt-3">
+              <div className="pt-3 flex gap-2 flex-wrap">
                 <ValueEntryButton onClick={() => openValueDialog("discord")} />
-              </div>
-            </Section>
-          )}
-
-          {platformSubTab === "follower" && (
-            <Section title="Discord · Members" color="text-indigo-400">
-              <div className="flex items-center justify-between py-2">
-                <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">Members</span>
-                <span className="font-mono text-xs text-foreground/80">{entry.discordFollowers || "—"}</span>
-              </div>
-              <div className="pt-3">
                 <FollowerEntryButton onClick={() => openFollowerDialog("discord")} />
+              </div>
+              <div className="pt-3 space-y-2">
+                <ValuePnlPanel metric="value" title="Discord Value P&L" />
+                <ValuePnlPanel metric="follower" title="Discord Members History" />
               </div>
             </Section>
           )}
@@ -750,9 +829,9 @@ function VaultEntityDetailContent() {
       {/* Telegram Tab */}
       {tab === "telegram" && (
         <div className="space-y-3">
-          <PlatformSubTabs subTab={platformSubTab} onChange={setPlatformSubTab} showFollower />
+          <PlatformSubTabs subTab={platformSubTab} onChange={setPlatformSubTab} />
 
-          {platformSubTab === "details" && (
+          {platformSubTab === "main" && (
             <Section
               title="Telegram"
               color="text-blue-400"
@@ -763,14 +842,27 @@ function VaultEntityDetailContent() {
               <CredRow label="Username" value={entry.telegramUsername} />
               <CredRow label="Phone" value={entry.telegramPhone} />
               <CredRow label="Password" value={entry.telegramPassword} />
-              <CredRow label="2FA" value={entry.telegram2fa} />
               <CredRow label="Email" value={entry.telegramLinkedEmail} />
               <CredRow label="Email Pass" value={entry.telegramLinkedEmailPassword} />
+              <CredRow label="Acct. 2FA" value={entry.telegram2fa} />
+              <CredRow label="Acct. Backup" value={entry.telegramAccountBackupCode} />
+              <CredRow label="Email 2FA" value={entry.telegramEmail2fa} />
+              <CredRow label="Email Backup" value={entry.telegramEmailBackupCode} />
               {!entry.telegramUsername && !entry.telegramPhone && (
                 <p className="font-mono text-xs text-muted-foreground/40 py-4 text-center">No Telegram account linked</p>
               )}
               {entry.telegramNotes && (
                 <p className="font-mono text-xs text-muted-foreground leading-relaxed py-3 border-t border-border/20 mt-2">{entry.telegramNotes}</p>
+              )}
+            </Section>
+          )}
+
+          {platformSubTab === "recovery" && (
+            <Section title="Telegram · Recovery" color="text-blue-400">
+              <CredRow label="Rec. 2FA" value={entry.telegramRecovery2fa} />
+              <CredRow label="Rec. Backup" value={entry.telegramRecoveryBackupCode} />
+              {!entry.telegramRecovery2fa && !entry.telegramRecoveryBackupCode && (
+                <p className="font-mono text-xs text-muted-foreground/40 py-4 text-center">No recovery info added</p>
               )}
             </Section>
           )}
@@ -794,6 +886,10 @@ function VaultEntityDetailContent() {
                 <span className="font-mono text-xs text-foreground/80">{entry.telegramAge || "—"}</span>
               </div>
               <div className="flex items-center justify-between py-2 border-b border-border/20">
+                <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">Followers</span>
+                <span className="font-mono text-xs text-foreground/80">{entry.telegramFollowers || "—"}</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-border/20">
                 <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">Buy Value</span>
                 <span className="font-mono text-xs font-bold text-cyan-400">${entry.telegramBuyValue || 0}</span>
               </div>
@@ -801,20 +897,13 @@ function VaultEntityDetailContent() {
                 <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">Worth</span>
                 <span className="font-mono text-xs font-bold text-amber-400">${entry.telegramWorth || 0}</span>
               </div>
-              <div className="pt-3">
+              <div className="pt-3 flex gap-2 flex-wrap">
                 <ValueEntryButton onClick={() => openValueDialog("telegram")} />
-              </div>
-            </Section>
-          )}
-
-          {platformSubTab === "follower" && (
-            <Section title="Telegram · Followers" color="text-blue-400">
-              <div className="flex items-center justify-between py-2">
-                <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-wider">Followers</span>
-                <span className="font-mono text-xs text-foreground/80">{entry.telegramFollowers || "—"}</span>
-              </div>
-              <div className="pt-3">
                 <FollowerEntryButton onClick={() => openFollowerDialog("telegram")} />
+              </div>
+              <div className="pt-3 space-y-2">
+                <ValuePnlPanel metric="value" title="Telegram Value P&L" />
+                <ValuePnlPanel metric="follower" title="Telegram Followers History" />
               </div>
             </Section>
           )}

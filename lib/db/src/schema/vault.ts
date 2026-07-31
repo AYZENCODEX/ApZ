@@ -20,6 +20,10 @@ export const vaultEntriesTable = pgTable("vault_entries", {
   emailBackupCode: text("email_backup_code"),
   emailRecovery: text("email_recovery"),
   emailRecoveryPassword: text("email_recovery_password"),
+  // Account · Main — account-level 2FA and backup code (separate from the
+  // linked email's own 2FA/backup which are email2fa/emailBackupCode above)
+  account2fa: text("account_2fa"),
+  accountBackupCode: text("account_backup_code"),
   // Account · Recovery — recovery-email 2FA/backup, separate from the
   // recovery email's own password above
   recovery2fa: text("recovery_2fa"),
@@ -55,6 +59,12 @@ export const vaultEntriesTable = pgTable("vault_entries", {
   twitterBuyDate: timestamp("twitter_buy_date"),
   twitterCreateDate: timestamp("twitter_create_date"),
   twitterNotes: text("twitter_notes"),
+  // Twitter · extra credential fields
+  twitterAccountBackupCode: text("twitter_account_backup_code"),
+  twitterEmail2fa: text("twitter_email_2fa"),
+  twitterEmailBackupCode: text("twitter_email_backup_code"),
+  twitterRecovery2fa: text("twitter_recovery_2fa"),
+  twitterRecoveryBackupCode: text("twitter_recovery_backup_code"),
 
   // Discord — full multilayer
   discordUsername: text("discord_username"),
@@ -72,6 +82,12 @@ export const vaultEntriesTable = pgTable("vault_entries", {
   discordBuyDate: timestamp("discord_buy_date"),
   discordCreateDate: timestamp("discord_create_date"),
   discordNotes: text("discord_notes"),
+  // Discord · extra credential fields
+  discordAccountBackupCode: text("discord_account_backup_code"),
+  discordEmail2fa: text("discord_email_2fa"),
+  discordEmailBackupCode: text("discord_email_backup_code"),
+  discordRecovery2fa: text("discord_recovery_2fa"),
+  discordRecoveryBackupCode: text("discord_recovery_backup_code"),
 
   // Telegram — full multilayer
   telegramUsername: text("telegram_username"),
@@ -88,6 +104,12 @@ export const vaultEntriesTable = pgTable("vault_entries", {
   telegramBuyDate: timestamp("telegram_buy_date"),
   telegramCreateDate: timestamp("telegram_create_date"),
   telegramNotes: text("telegram_notes"),
+  // Telegram · extra credential fields
+  telegramAccountBackupCode: text("telegram_account_backup_code"),
+  telegramEmail2fa: text("telegram_email_2fa"),
+  telegramEmailBackupCode: text("telegram_email_backup_code"),
+  telegramRecovery2fa: text("telegram_recovery_2fa"),
+  telegramRecoveryBackupCode: text("telegram_recovery_backup_code"),
 
   walletAddresses: text("wallet_addresses"),
   backupCodes: text("backup_codes"),

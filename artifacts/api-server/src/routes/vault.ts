@@ -22,9 +22,16 @@ const router = Router();
 const SENSITIVE_VAULT_FIELDS = new Set([
   "accountPassword", "emailPassword", "email2fa", "emailBackupCode", "emailRecoveryPassword",
   "recovery2fa", "recoveryBackupCode",
+  "account2fa", "accountBackupCode",
   "twitterPassword", "twitterEmailPassword", "twitter2fa", "twitterEmailRecoveryPassword",
+  "twitterAccountBackupCode", "twitterEmail2fa", "twitterEmailBackupCode",
+  "twitterRecovery2fa", "twitterRecoveryBackupCode",
   "discordPassword", "discordEmailPassword", "discord2fa", "discordEmailRecoveryPassword",
+  "discordAccountBackupCode", "discordEmail2fa", "discordEmailBackupCode",
+  "discordRecovery2fa", "discordRecoveryBackupCode",
   "telegramPassword", "telegramLinkedEmailPassword", "telegram2fa",
+  "telegramAccountBackupCode", "telegramEmail2fa", "telegramEmailBackupCode",
+  "telegramRecovery2fa", "telegramRecoveryBackupCode",
   "backupCodes", "otherAccounts",
 ]);
 
@@ -193,7 +200,14 @@ const SAFE_COLS = `id, user_id, entity_serial, category, project_name,
   null::text as telegram_followers,
   null::timestamp as twitter_last_login_at, null::timestamp as twitter_buy_date, null::timestamp as twitter_create_date, null::text as twitter_notes,
   null::timestamp as discord_last_login_at, null::timestamp as discord_buy_date, null::timestamp as discord_create_date, null::text as discord_notes,
-  null::timestamp as telegram_last_login_at, null::timestamp as telegram_buy_date, null::timestamp as telegram_create_date, null::text as telegram_notes`;
+  null::timestamp as telegram_last_login_at, null::timestamp as telegram_buy_date, null::timestamp as telegram_create_date, null::text as telegram_notes,
+  null::text as account_2fa, null::text as account_backup_code,
+  null::text as twitter_account_backup_code, null::text as twitter_email_2fa, null::text as twitter_email_backup_code,
+  null::text as twitter_recovery_2fa, null::text as twitter_recovery_backup_code,
+  null::text as discord_account_backup_code, null::text as discord_email_2fa, null::text as discord_email_backup_code,
+  null::text as discord_recovery_2fa, null::text as discord_recovery_backup_code,
+  null::text as telegram_account_backup_code, null::text as telegram_email_2fa, null::text as telegram_email_backup_code,
+  null::text as telegram_recovery_2fa, null::text as telegram_recovery_backup_code`;
 
 async function selectVault(userId: number): Promise<Record<string, unknown>[]> {
   try {
@@ -301,6 +315,24 @@ export function formatRow(e: Record<string, unknown>, revealSeed = false) {
     telegramBuyDate: e.telegram_buy_date ?? e.telegramBuyDate ?? null,
     telegramCreateDate: e.telegram_create_date ?? e.telegramCreateDate ?? null,
     telegramNotes: e.telegram_notes ?? e.telegramNotes ?? null,
+    // New per-platform credential fields
+    account2fa: decryptField((e.account_2fa ?? (e as any).account2fa ?? null) as string | null),
+    accountBackupCode: decryptField((e.account_backup_code ?? (e as any).accountBackupCode ?? null) as string | null),
+    twitterAccountBackupCode: decryptField((e.twitter_account_backup_code ?? (e as any).twitterAccountBackupCode ?? null) as string | null),
+    twitterEmail2fa: decryptField((e.twitter_email_2fa ?? (e as any).twitterEmail2fa ?? null) as string | null),
+    twitterEmailBackupCode: decryptField((e.twitter_email_backup_code ?? (e as any).twitterEmailBackupCode ?? null) as string | null),
+    twitterRecovery2fa: decryptField((e.twitter_recovery_2fa ?? (e as any).twitterRecovery2fa ?? null) as string | null),
+    twitterRecoveryBackupCode: decryptField((e.twitter_recovery_backup_code ?? (e as any).twitterRecoveryBackupCode ?? null) as string | null),
+    discordAccountBackupCode: decryptField((e.discord_account_backup_code ?? (e as any).discordAccountBackupCode ?? null) as string | null),
+    discordEmail2fa: decryptField((e.discord_email_2fa ?? (e as any).discordEmail2fa ?? null) as string | null),
+    discordEmailBackupCode: decryptField((e.discord_email_backup_code ?? (e as any).discordEmailBackupCode ?? null) as string | null),
+    discordRecovery2fa: decryptField((e.discord_recovery_2fa ?? (e as any).discordRecovery2fa ?? null) as string | null),
+    discordRecoveryBackupCode: decryptField((e.discord_recovery_backup_code ?? (e as any).discordRecoveryBackupCode ?? null) as string | null),
+    telegramAccountBackupCode: decryptField((e.telegram_account_backup_code ?? (e as any).telegramAccountBackupCode ?? null) as string | null),
+    telegramEmail2fa: decryptField((e.telegram_email_2fa ?? (e as any).telegramEmail2fa ?? null) as string | null),
+    telegramEmailBackupCode: decryptField((e.telegram_email_backup_code ?? (e as any).telegramEmailBackupCode ?? null) as string | null),
+    telegramRecovery2fa: decryptField((e.telegram_recovery_2fa ?? (e as any).telegramRecovery2fa ?? null) as string | null),
+    telegramRecoveryBackupCode: decryptField((e.telegram_recovery_backup_code ?? (e as any).telegramRecoveryBackupCode ?? null) as string | null),
     walletAddresses: walStr ? (() => { try { return JSON.parse(walStr as string); } catch { return []; } })() : [],
     backupCodes: bkStr ? (() => { try { return JSON.parse(bkStr as string); } catch { return []; } })() : [],
     tags: (() => {
@@ -345,6 +377,10 @@ const NEW_VAULT_FIELDS: (keyof typeof vaultEntriesTable.$inferInsert)[] = [
   "telegramPhone", "telegram2fa", "telegramLinkedEmail", "telegramLinkedEmailPassword", "telegramAge", "telegramWorth", "telegramBuyValue",
   "telegramFollowers", "telegramLastLoginAt", "telegramBuyDate", "telegramCreateDate", "telegramNotes",
   "twitterBanned", "discordBanned", "telegramBanned",
+  "account2fa", "accountBackupCode",
+  "twitterAccountBackupCode", "twitterEmail2fa", "twitterEmailBackupCode", "twitterRecovery2fa", "twitterRecoveryBackupCode",
+  "discordAccountBackupCode", "discordEmail2fa", "discordEmailBackupCode", "discordRecovery2fa", "discordRecoveryBackupCode",
+  "telegramAccountBackupCode", "telegramEmail2fa", "telegramEmailBackupCode", "telegramRecovery2fa", "telegramRecoveryBackupCode",
 ];
 
 // ─── GET /vault — list user's vault entries ──────────────────────────────────
@@ -377,6 +413,10 @@ router.post("/vault", requireAuth, async (req, res): Promise<void> => {
     discordLastLoginAt, discordBuyDate, discordCreateDate, discordNotes,
     telegramPhone, telegram2fa, telegramLinkedEmail, telegramLinkedEmailPassword, telegramAge, telegramWorth, telegramBuyValue,
     telegramFollowers, telegramLastLoginAt, telegramBuyDate, telegramCreateDate, telegramNotes,
+    account2fa, accountBackupCode,
+    twitterAccountBackupCode, twitterEmail2fa, twitterEmailBackupCode, twitterRecovery2fa, twitterRecoveryBackupCode,
+    discordAccountBackupCode, discordEmail2fa, discordEmailBackupCode, discordRecovery2fa, discordRecoveryBackupCode,
+    telegramAccountBackupCode, telegramEmail2fa, telegramEmailBackupCode, telegramRecovery2fa, telegramRecoveryBackupCode,
     score,
   } = req.body;
 
@@ -456,6 +496,23 @@ router.post("/vault", requireAuth, async (req, res): Promise<void> => {
       telegramBuyDate: telegramBuyDate ? new Date(telegramBuyDate) : null,
       telegramCreateDate: telegramCreateDate ? new Date(telegramCreateDate) : null,
       telegramNotes: telegramNotes || null,
+      account2fa: encryptField(account2fa || null),
+      accountBackupCode: encryptField(accountBackupCode || null),
+      twitterAccountBackupCode: encryptField(twitterAccountBackupCode || null),
+      twitterEmail2fa: encryptField(twitterEmail2fa || null),
+      twitterEmailBackupCode: encryptField(twitterEmailBackupCode || null),
+      twitterRecovery2fa: encryptField(twitterRecovery2fa || null),
+      twitterRecoveryBackupCode: encryptField(twitterRecoveryBackupCode || null),
+      discordAccountBackupCode: encryptField(discordAccountBackupCode || null),
+      discordEmail2fa: encryptField(discordEmail2fa || null),
+      discordEmailBackupCode: encryptField(discordEmailBackupCode || null),
+      discordRecovery2fa: encryptField(discordRecovery2fa || null),
+      discordRecoveryBackupCode: encryptField(discordRecoveryBackupCode || null),
+      telegramAccountBackupCode: encryptField(telegramAccountBackupCode || null),
+      telegramEmail2fa: encryptField(telegramEmail2fa || null),
+      telegramEmailBackupCode: encryptField(telegramEmailBackupCode || null),
+      telegramRecovery2fa: encryptField(telegramRecovery2fa || null),
+      telegramRecoveryBackupCode: encryptField(telegramRecoveryBackupCode || null),
     } as typeof vaultEntriesTable.$inferInsert).returning();
     entry = row as unknown as Record<string, unknown>;
   } catch {

@@ -362,6 +362,9 @@ function VaultLocalDetailContent() {
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <ValueEntryButton onClick={() => setValueDialogOpen(true)} />
+            <Button variant="outline" size="sm" onClick={() => navigate(`/vault/local/${account.id}/access`)} className="font-mono text-xs gap-1.5">
+              <KeyRound className="w-3.5 h-3.5" /> Access
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setEmailSettingsOpen(true)} className="font-mono text-xs gap-1.5">
               <Settings2 className="w-3.5 h-3.5" /> Email Settings
             </Button>

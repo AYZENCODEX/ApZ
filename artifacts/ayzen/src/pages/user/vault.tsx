@@ -345,21 +345,24 @@ function EmailPlatformPanel({
 const EMPTY_FORM = {
   category: "", projectName: "",
   username: "", accountPassword: "",
-  email: "", emailPassword: "", email2fa: "", emailBackupCode: "",
+  email: "", emailPassword: "", account2fa: "", accountBackupCode: "", email2fa: "", emailBackupCode: "",
   emailRecovery: "", emailRecoveryPassword: "", recovery2fa: "", recoveryBackupCode: "",
   lastLoginAt: "", buyDate: "", createDate: "",
   currentValue: "", currentBuyValue: "", followers: "",
   seedPhrase: "",
   twitterUsername: "", twitterPassword: "", twitterEmail: "", twitterEmailPassword: "",
-  twitterFollowers: "", twitter2fa: "", twitterEmailRecovery: "", twitterEmailRecoveryPassword: "",
+  twitterFollowers: "", twitter2fa: "", twitterAccountBackupCode: "", twitterEmail2fa: "", twitterEmailBackupCode: "",
+  twitterEmailRecovery: "", twitterEmailRecoveryPassword: "", twitterRecovery2fa: "", twitterRecoveryBackupCode: "",
   twitterAge: "", twitterWorth: "", twitterBuyValue: "",
   twitterNotes: "", twitterLastLoginAt: "", twitterBuyDate: "", twitterCreateDate: "",
   discordUsername: "", discordPassword: "", discordEmail: "", discordEmailPassword: "",
-  discord2fa: "", discordEmailRecovery: "", discordEmailRecoveryPassword: "",
+  discord2fa: "", discordAccountBackupCode: "", discordEmail2fa: "", discordEmailBackupCode: "",
+  discordEmailRecovery: "", discordEmailRecoveryPassword: "", discordRecovery2fa: "", discordRecoveryBackupCode: "",
   discordFollowers: "", discordAge: "", discordWorth: "", discordBuyValue: "",
   discordNotes: "", discordLastLoginAt: "", discordBuyDate: "", discordCreateDate: "",
   telegramUsername: "", telegramPassword: "", telegramPhone: "", telegram2fa: "",
-  telegramLinkedEmail: "", telegramLinkedEmailPassword: "",
+  telegramAccountBackupCode: "", telegramEmail2fa: "", telegramEmailBackupCode: "",
+  telegramLinkedEmail: "", telegramLinkedEmailPassword: "", telegramRecovery2fa: "", telegramRecoveryBackupCode: "",
   telegramAge: "", telegramWorth: "", telegramBuyValue: "", telegramFollowers: "",
   telegramNotes: "", telegramLastLoginAt: "", telegramBuyDate: "", telegramCreateDate: "",
   walletAddresses: "", backupCodes: "", notes: "", score: "5", tags: "",
@@ -434,6 +437,21 @@ function EntityManager() {
 
   const allEntries: EntryAny[] = (data as EntryAny[] | undefined) ?? [];
 
+  // Auto-open edit dialog when ?editId=<n> is in the URL (navigated from the
+  // Edit button on the entity detail page). Only fires once per load.
+  const urlSearch = useSearch();
+  const urlEditIdParam = new URLSearchParams(urlSearch).get("editId");
+  const [urlEditHandled, setUrlEditHandled] = useState(false);
+  useEffect(() => {
+    if (urlEditHandled || !urlEditIdParam || isLoading || allEntries.length === 0) return;
+    const entry = allEntries.find(e => String(e.id) === String(urlEditIdParam));
+    if (entry) {
+      openEdit(entry);
+      setUrlEditHandled(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlEditIdParam, isLoading, allEntries]);
+
   // Per-entity project progress, for the badge/performance-score formula
   // (see src/lib/performance-score.ts). Fetched once for the whole list
   // rather than per-card, then looked up by vaultEntryId below.
@@ -503,6 +521,8 @@ function EntityManager() {
       projectName: entry.projectName ?? "",
       username: entry.username ?? "",
       accountPassword: entry.accountPassword ?? "",
+      account2fa: entry.account2fa ?? "",
+      accountBackupCode: entry.accountBackupCode ?? "",
       email: entry.email ?? "",
       emailPassword: entry.emailPassword ?? "",
       email2fa: entry.email2fa ?? "",
@@ -524,8 +544,13 @@ function EntityManager() {
       twitterEmailPassword: entry.twitterEmailPassword ?? "",
       twitterFollowers: entry.twitterFollowers ?? "",
       twitter2fa: entry.twitter2fa ?? "",
+      twitterAccountBackupCode: entry.twitterAccountBackupCode ?? "",
+      twitterEmail2fa: entry.twitterEmail2fa ?? "",
+      twitterEmailBackupCode: entry.twitterEmailBackupCode ?? "",
       twitterEmailRecovery: entry.twitterEmailRecovery ?? "",
       twitterEmailRecoveryPassword: entry.twitterEmailRecoveryPassword ?? "",
+      twitterRecovery2fa: entry.twitterRecovery2fa ?? "",
+      twitterRecoveryBackupCode: entry.twitterRecoveryBackupCode ?? "",
       twitterAge: entry.twitterAge ?? "",
       twitterWorth: entry.twitterWorth ?? "",
       twitterBuyValue: entry.twitterBuyValue ?? "",
@@ -538,8 +563,13 @@ function EntityManager() {
       discordEmail: entry.discordEmail ?? "",
       discordEmailPassword: entry.discordEmailPassword ?? "",
       discord2fa: entry.discord2fa ?? "",
+      discordAccountBackupCode: entry.discordAccountBackupCode ?? "",
+      discordEmail2fa: entry.discordEmail2fa ?? "",
+      discordEmailBackupCode: entry.discordEmailBackupCode ?? "",
       discordEmailRecovery: entry.discordEmailRecovery ?? "",
       discordEmailRecoveryPassword: entry.discordEmailRecoveryPassword ?? "",
+      discordRecovery2fa: entry.discordRecovery2fa ?? "",
+      discordRecoveryBackupCode: entry.discordRecoveryBackupCode ?? "",
       discordFollowers: entry.discordFollowers ?? "",
       discordAge: entry.discordAge ?? "",
       discordWorth: entry.discordWorth ?? "",
@@ -552,8 +582,13 @@ function EntityManager() {
       telegramPassword: entry.telegramPassword ?? "",
       telegramPhone: entry.telegramPhone ?? "",
       telegram2fa: entry.telegram2fa ?? "",
+      telegramAccountBackupCode: entry.telegramAccountBackupCode ?? "",
+      telegramEmail2fa: entry.telegramEmail2fa ?? "",
+      telegramEmailBackupCode: entry.telegramEmailBackupCode ?? "",
       telegramLinkedEmail: entry.telegramLinkedEmail ?? "",
       telegramLinkedEmailPassword: entry.telegramLinkedEmailPassword ?? "",
+      telegramRecovery2fa: entry.telegramRecovery2fa ?? "",
+      telegramRecoveryBackupCode: entry.telegramRecoveryBackupCode ?? "",
       telegramAge: entry.telegramAge ?? "",
       telegramWorth: entry.telegramWorth ?? "",
       telegramBuyValue: entry.telegramBuyValue ?? "",
@@ -720,20 +755,24 @@ function EntityManager() {
   const buildPayload = () => {
     const payload: Record<string, any> = { category: form.category, projectName: form.projectName };
     const strFields: (keyof typeof EMPTY_FORM)[] = [
-      "username", "accountPassword", "email2fa", "emailBackupCode",
+      "username", "accountPassword", "account2fa", "accountBackupCode", "email2fa", "emailBackupCode",
       "recovery2fa", "recoveryBackupCode", "lastLoginAt", "buyDate", "createDate",
       "seedPhrase",
       "email", "emailPassword", "emailRecovery", "emailRecoveryPassword",
       "twitterUsername", "twitterPassword", "twitterEmail", "twitterEmailPassword",
-      "twitterFollowers", "twitter2fa", "twitterEmailRecovery", "twitterEmailRecoveryPassword",
+      "twitterFollowers", "twitter2fa", "twitterAccountBackupCode", "twitterEmail2fa", "twitterEmailBackupCode",
+      "twitterEmailRecovery", "twitterEmailRecoveryPassword", "twitterRecovery2fa", "twitterRecoveryBackupCode",
       "twitterAge", "twitterWorth", "twitterBuyValue",
       "twitterNotes", "twitterLastLoginAt", "twitterBuyDate", "twitterCreateDate",
       "discordUsername", "discordPassword", "discordEmail", "discordEmailPassword",
-      "discord2fa", "discordEmailRecovery", "discordEmailRecoveryPassword",
+      "discord2fa", "discordAccountBackupCode", "discordEmail2fa", "discordEmailBackupCode",
+      "discordEmailRecovery", "discordEmailRecoveryPassword", "discordRecovery2fa", "discordRecoveryBackupCode",
       "discordFollowers", "discordAge", "discordWorth", "discordBuyValue",
       "discordNotes", "discordLastLoginAt", "discordBuyDate", "discordCreateDate",
       "telegramUsername", "telegramPassword", "telegramPhone", "telegram2fa",
-      "telegramLinkedEmail", "telegramLinkedEmailPassword", "telegramAge", "telegramWorth", "telegramBuyValue",
+      "telegramAccountBackupCode", "telegramEmail2fa", "telegramEmailBackupCode",
+      "telegramLinkedEmail", "telegramLinkedEmailPassword", "telegramRecovery2fa", "telegramRecoveryBackupCode",
+      "telegramAge", "telegramWorth", "telegramBuyValue",
       "telegramFollowers", "telegramNotes", "telegramLastLoginAt", "telegramBuyDate", "telegramCreateDate", "notes",
     ];
     for (const k of strFields) if (form[k]) payload[k] = form[k];
@@ -1606,24 +1645,28 @@ function EntityManager() {
 
 // ── Entity Tab wrapper (Dashboard + List) ───────────────────────────────────────
 function EntityTab() {
-  const [view, setView] = useState<"dashboard" | "list">("dashboard");
+  const search = useSearch();
+  const urlEditId = new URLSearchParams(search).get("editId");
+  // Force list view when a specific editId is passed in the URL (from Edit button on detail page)
+  const [view, setView] = useState<"dashboard" | "list">(urlEditId ? "list" : "dashboard");
+  const effectiveView = urlEditId ? "list" : view;
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-1 bg-muted/20 rounded-lg p-1 w-fit">
         <button
           onClick={() => setView("dashboard")}
-          className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-md font-mono text-xs transition-all", view === "dashboard" ? "bg-card text-primary shadow-sm font-bold" : "text-muted-foreground/60 hover:text-muted-foreground")}
+          className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-md font-mono text-xs transition-all", effectiveView === "dashboard" ? "bg-card text-primary shadow-sm font-bold" : "text-muted-foreground/60 hover:text-muted-foreground")}
         >
           <LayoutDashboard className="w-3 h-3" /> Dashboard
         </button>
         <button
           onClick={() => setView("list")}
-          className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-md font-mono text-xs transition-all", view === "list" ? "bg-card text-primary shadow-sm font-bold" : "text-muted-foreground/60 hover:text-muted-foreground")}
+          className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-md font-mono text-xs transition-all", effectiveView === "list" ? "bg-card text-primary shadow-sm font-bold" : "text-muted-foreground/60 hover:text-muted-foreground")}
         >
           <List className="w-3 h-3" /> Manage
         </button>
       </div>
-      {view === "dashboard" ? (
+      {effectiveView === "dashboard" ? (
         <Suspense fallback={<LoadingTab />}>
           <VaultEntityDashboard />
         </Suspense>

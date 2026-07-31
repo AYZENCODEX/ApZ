@@ -25,8 +25,8 @@ import { cn } from "@/lib/utils";
 // ── MANAGE group — enroll hierarchy (Overview / Entity / Project) ──────────
 const MANAGE_ITEMS = [
   { href: "/vault?tab=entity", label: "Overview", icon: LayoutDashboard },
-  { href: "/enroll/entities",  label: "Entity",   icon: Users },
-  { href: "/enroll/projects",  label: "Project",  icon: FolderGit2 },
+  { href: "/vault?tab=entity", label: "Entity",   icon: Users },
+  { href: "/vault?tab=entity", label: "Project",  icon: FolderGit2 },
 ] as const;
 
 // ── OTHER group — vault management pages ───────────────────────────────────

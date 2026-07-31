@@ -65,12 +65,20 @@ export const ENTITY_FIELDS: FieldDef[] = [
     pairKey: "acct-2", placeholder: "••••••••", compact: true,
   },
   {
-    key: "email2fa", label: "Email 2FA Secret", type: "text", tab: "account", subtab: "main",
+    key: "account2fa", label: "Account 2FA Secret", type: "text", tab: "account", subtab: "main",
     pairKey: "acct-3", placeholder: "TOTP secret...", compact: true,
   },
   {
-    key: "emailBackupCode", label: "Email Backup Code", type: "text", tab: "account", subtab: "main",
+    key: "accountBackupCode", label: "Account Backup Code", type: "text", tab: "account", subtab: "main",
     pairKey: "acct-3", placeholder: "backup code...", compact: true,
+  },
+  {
+    key: "email2fa", label: "Email 2FA Secret", type: "text", tab: "account", subtab: "main",
+    pairKey: "acct-4", placeholder: "TOTP secret...", compact: true,
+  },
+  {
+    key: "emailBackupCode", label: "Email Backup Code", type: "text", tab: "account", subtab: "main",
+    pairKey: "acct-4", placeholder: "backup code...", compact: true,
   },
   {
     key: "notes", label: "Notes", type: "textarea", tab: "account", subtab: "main",
@@ -146,6 +154,30 @@ export const ENTITY_FIELDS: FieldDef[] = [
     pairKey: "tw-main-1", placeholder: "••••••••", compact: true,
   },
   {
+    key: "twitterEmail", label: "Email", type: "text", tab: "twitter", subtab: "main",
+    pairKey: "tw-main-2", placeholder: "tw@email.com", compact: true,
+  },
+  {
+    key: "twitterEmailPassword", label: "Email Password", type: "password", tab: "twitter", subtab: "main",
+    pairKey: "tw-main-2", placeholder: "••••••••", compact: true,
+  },
+  {
+    key: "twitter2fa", label: "Acct. 2FA Secret", type: "text", tab: "twitter", subtab: "main",
+    pairKey: "tw-main-3", placeholder: "TOTP secret...", compact: true,
+  },
+  {
+    key: "twitterAccountBackupCode", label: "Acct. Backup Code", type: "text", tab: "twitter", subtab: "main",
+    pairKey: "tw-main-3", placeholder: "backup code...", compact: true,
+  },
+  {
+    key: "twitterEmail2fa", label: "Email 2FA Secret", type: "text", tab: "twitter", subtab: "main",
+    pairKey: "tw-main-4", placeholder: "TOTP secret...", compact: true,
+  },
+  {
+    key: "twitterEmailBackupCode", label: "Email Backup Code", type: "text", tab: "twitter", subtab: "main",
+    pairKey: "tw-main-4", placeholder: "backup code...", compact: true,
+  },
+  {
     key: "twitterNotes", label: "Notes", type: "textarea", tab: "twitter", subtab: "main",
     placeholder: "Airdrop notes, important info...", rows: 3,
   },
@@ -182,16 +214,20 @@ export const ENTITY_FIELDS: FieldDef[] = [
 
   // ── Twitter · Recovery ────────────────────────────────────────────────
   {
-    key: "twitterEmail", label: "Linked Email", type: "text", tab: "twitter", subtab: "recovery",
-    pairKey: "tw-rec-1", placeholder: "tw@email.com", compact: true,
+    key: "twitterEmailRecovery", label: "Recovery Email", type: "text", tab: "twitter", subtab: "recovery",
+    pairKey: "tw-rec-1", placeholder: "recovery@email.com", compact: true,
   },
   {
-    key: "twitterEmailPassword", label: "Email Password", type: "password", tab: "twitter", subtab: "recovery",
+    key: "twitterEmailRecoveryPassword", label: "Recovery Email Pass", type: "password", tab: "twitter", subtab: "recovery",
     pairKey: "tw-rec-1", placeholder: "••••••••", compact: true,
   },
   {
-    key: "twitter2fa", label: "2FA Secret", type: "text", tab: "twitter", subtab: "recovery",
+    key: "twitterRecovery2fa", label: "Recovery 2FA Secret", type: "text", tab: "twitter", subtab: "recovery",
     pairKey: "tw-rec-2", placeholder: "TOTP secret...", compact: true,
+  },
+  {
+    key: "twitterRecoveryBackupCode", label: "Recovery Backup Code", type: "text", tab: "twitter", subtab: "recovery",
+    pairKey: "tw-rec-2", placeholder: "backup code...", compact: true,
   },
 
   // ── Discord · Main ────────────────────────────────────────────────────
@@ -202,6 +238,30 @@ export const ENTITY_FIELDS: FieldDef[] = [
   {
     key: "discordPassword", label: "Password", type: "password", tab: "discord", subtab: "main",
     pairKey: "dc-main-1", placeholder: "••••••••", compact: true,
+  },
+  {
+    key: "discordEmail", label: "Email", type: "text", tab: "discord", subtab: "main",
+    pairKey: "dc-main-2", placeholder: "dc@email.com", compact: true,
+  },
+  {
+    key: "discordEmailPassword", label: "Email Password", type: "password", tab: "discord", subtab: "main",
+    pairKey: "dc-main-2", placeholder: "••••••••", compact: true,
+  },
+  {
+    key: "discord2fa", label: "Acct. 2FA Secret", type: "text", tab: "discord", subtab: "main",
+    pairKey: "dc-main-3", placeholder: "TOTP secret...", compact: true,
+  },
+  {
+    key: "discordAccountBackupCode", label: "Acct. Backup Code", type: "text", tab: "discord", subtab: "main",
+    pairKey: "dc-main-3", placeholder: "backup code...", compact: true,
+  },
+  {
+    key: "discordEmail2fa", label: "Email 2FA Secret", type: "text", tab: "discord", subtab: "main",
+    pairKey: "dc-main-4", placeholder: "TOTP secret...", compact: true,
+  },
+  {
+    key: "discordEmailBackupCode", label: "Email Backup Code", type: "text", tab: "discord", subtab: "main",
+    pairKey: "dc-main-4", placeholder: "backup code...", compact: true,
   },
   {
     key: "discordNotes", label: "Notes", type: "textarea", tab: "discord", subtab: "main",
@@ -240,16 +300,20 @@ export const ENTITY_FIELDS: FieldDef[] = [
 
   // ── Discord · Recovery ────────────────────────────────────────────────
   {
-    key: "discordEmail", label: "Linked Email", type: "text", tab: "discord", subtab: "recovery",
-    pairKey: "dc-rec-1", placeholder: "dc@email.com", compact: true,
+    key: "discordEmailRecovery", label: "Recovery Email", type: "text", tab: "discord", subtab: "recovery",
+    pairKey: "dc-rec-1", placeholder: "recovery@email.com", compact: true,
   },
   {
-    key: "discordEmailPassword", label: "Email Password", type: "password", tab: "discord", subtab: "recovery",
+    key: "discordEmailRecoveryPassword", label: "Recovery Email Pass", type: "password", tab: "discord", subtab: "recovery",
     pairKey: "dc-rec-1", placeholder: "••••••••", compact: true,
   },
   {
-    key: "discord2fa", label: "2FA Secret", type: "text", tab: "discord", subtab: "recovery",
+    key: "discordRecovery2fa", label: "Recovery 2FA Secret", type: "text", tab: "discord", subtab: "recovery",
     pairKey: "dc-rec-2", placeholder: "TOTP secret...", compact: true,
+  },
+  {
+    key: "discordRecoveryBackupCode", label: "Recovery Backup Code", type: "text", tab: "discord", subtab: "recovery",
+    pairKey: "dc-rec-2", placeholder: "backup code...", compact: true,
   },
 
   // ── Telegram · Main ───────────────────────────────────────────────────
@@ -260,6 +324,34 @@ export const ENTITY_FIELDS: FieldDef[] = [
   {
     key: "telegramPhone", label: "Phone", type: "text", tab: "telegram", subtab: "main",
     pairKey: "tg-main-1", placeholder: "+1234567890", compact: true,
+  },
+  {
+    key: "telegramPassword", label: "Password", type: "password", tab: "telegram", subtab: "main",
+    pairKey: "tg-main-2", placeholder: "••••••••", compact: true,
+  },
+  {
+    key: "telegramLinkedEmail", label: "Linked Email", type: "text", tab: "telegram", subtab: "main",
+    pairKey: "tg-main-2", placeholder: "tg@email.com", compact: true,
+  },
+  {
+    key: "telegramLinkedEmailPassword", label: "Email Password", type: "password", tab: "telegram", subtab: "main",
+    pairKey: "tg-main-3", placeholder: "••••••••", compact: true,
+  },
+  {
+    key: "telegram2fa", label: "Acct. 2FA Secret", type: "text", tab: "telegram", subtab: "main",
+    pairKey: "tg-main-3", placeholder: "TOTP secret...", compact: true,
+  },
+  {
+    key: "telegramAccountBackupCode", label: "Acct. Backup Code", type: "text", tab: "telegram", subtab: "main",
+    pairKey: "tg-main-4", placeholder: "backup code...", compact: true,
+  },
+  {
+    key: "telegramEmail2fa", label: "Email 2FA Secret", type: "text", tab: "telegram", subtab: "main",
+    pairKey: "tg-main-4", placeholder: "TOTP secret...", compact: true,
+  },
+  {
+    key: "telegramEmailBackupCode", label: "Email Backup Code", type: "text", tab: "telegram", subtab: "main",
+    pairKey: "tg-main-5", placeholder: "backup code...", compact: true,
   },
   {
     key: "telegramNotes", label: "Notes", type: "textarea", tab: "telegram", subtab: "main",
@@ -298,16 +390,12 @@ export const ENTITY_FIELDS: FieldDef[] = [
 
   // ── Telegram · Recovery ───────────────────────────────────────────────
   {
-    key: "telegramLinkedEmail", label: "Linked Email", type: "text", tab: "telegram", subtab: "recovery",
-    pairKey: "tg-rec-1", placeholder: "tg@email.com", compact: true,
+    key: "telegramRecovery2fa", label: "Recovery 2FA Secret", type: "text", tab: "telegram", subtab: "recovery",
+    pairKey: "tg-rec-1", placeholder: "TOTP secret...", compact: true,
   },
   {
-    key: "telegramLinkedEmailPassword", label: "Email Password", type: "password", tab: "telegram", subtab: "recovery",
-    pairKey: "tg-rec-1", placeholder: "••••••••", compact: true,
-  },
-  {
-    key: "telegram2fa", label: "2FA Secret", type: "text", tab: "telegram", subtab: "recovery",
-    pairKey: "tg-rec-2", placeholder: "TOTP secret...", compact: true,
+    key: "telegramRecoveryBackupCode", label: "Recovery Backup Code", type: "text", tab: "telegram", subtab: "recovery",
+    pairKey: "tg-rec-1", placeholder: "backup code...", compact: true,
   },
 
   {

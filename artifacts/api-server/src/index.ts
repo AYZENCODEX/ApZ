@@ -1704,6 +1704,24 @@ const MIGRATIONS = [
   "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS telegram_banned BOOLEAN NOT NULL DEFAULT FALSE",
   "ALTER TABLE local_accounts ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active'",
   "ALTER TABLE kyc_entries ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active'",
+  // New credential fields — account-level 2FA/backup + per-platform email2fa/backup/recovery
+  "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS account_2fa TEXT",
+  "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS account_backup_code TEXT",
+  "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS twitter_account_backup_code TEXT",
+  "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS twitter_email_2fa TEXT",
+  "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS twitter_email_backup_code TEXT",
+  "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS twitter_recovery_2fa TEXT",
+  "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS twitter_recovery_backup_code TEXT",
+  "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS discord_account_backup_code TEXT",
+  "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS discord_email_2fa TEXT",
+  "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS discord_email_backup_code TEXT",
+  "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS discord_recovery_2fa TEXT",
+  "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS discord_recovery_backup_code TEXT",
+  "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS telegram_account_backup_code TEXT",
+  "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS telegram_email_2fa TEXT",
+  "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS telegram_email_backup_code TEXT",
+  "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS telegram_recovery_2fa TEXT",
+  "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS telegram_recovery_backup_code TEXT",
 ];
 
 async function waitForDbThenMigrate(): Promise<void> {
