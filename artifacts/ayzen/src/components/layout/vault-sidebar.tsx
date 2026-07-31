@@ -108,7 +108,7 @@ export function VaultSidebar() {
 
   return (
     <nav aria-label="Vault sections" className="w-full sm:w-52 flex-shrink-0 space-y-4">
-      <SidebarGroup label=""            items={TOP_ITEMS}     location={location} />
+      <SidebarGroup label="Account"      items={TOP_ITEMS}     location={location} />
       <SidebarGroup label="Access"      items={ACCESS_ITEMS}  location={location} />
       <SidebarGroup label="Enrollment"  items={ENROLL_ITEMS}  location={location} />
       <SidebarGroup label="Other"       items={OTHER_ITEMS}   location={location} />
@@ -120,22 +120,26 @@ export function VaultSidebar() {
 // Keeps header spacing, icon treatment, and the sidebar + content split
 // consistent across all vault sidebar pages without repeating layout markup.
 export function VaultSectionPage({
-  title, description, icon: Icon, children,
+  title, description, icon: Icon, children, headerExtra,
 }: {
   title: string;
   description: string;
   icon: React.ElementType;
   children: React.ReactNode;
+  headerExtra?: React.ReactNode;
 }) {
   return (
     <div className="space-y-5 page-enter">
       <div>
-        <h1 className="text-2xl font-bold font-mono tracking-tighter uppercase flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
-            <Icon className="w-4 h-4 text-primary" />
-          </div>
-          {title}
-        </h1>
+        <div className="flex items-start justify-between gap-2">
+          <h1 className="text-2xl font-bold font-mono tracking-tighter uppercase flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <Icon className="w-4 h-4 text-primary" />
+            </div>
+            {title}
+          </h1>
+          {headerExtra && <div className="flex-shrink-0 mt-1">{headerExtra}</div>}
+        </div>
         <p className="text-muted-foreground font-mono text-xs mt-1 pl-0.5">{description}</p>
       </div>
 

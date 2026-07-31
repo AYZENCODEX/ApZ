@@ -106,6 +106,7 @@ const VaultEnrollmentLinkedDetail   = lazy(() => import("@/pages/user/vault-enro
 const VaultSecurity     = lazy(() => import("@/pages/user/vault-security"));
 const VaultBackup       = lazy(() => import("@/pages/user/vault-backup"));
 const VaultShared       = lazy(() => import("@/pages/user/vault-shared"));
+const VaultSharedEntity = lazy(() => import("@/pages/user/vault-shared-entity"));
 const VaultBanned       = lazy(() => import("@/pages/user/vault-banned"));
 // Phase 9A — Enroll sidebar shell (Projects Overview; Entities placeholder
 // until Phase 10A wires it up)
@@ -227,8 +228,9 @@ export const USER_ROUTES: RouteConfig[] = [
   { path: "/vault/enrollment/linked/:entityId",  component: VaultEnrollmentLinkedDetail },
   { path: "/vault/security",     component: VaultSecurity },
   { path: "/vault/backup",       component: VaultBackup },
-  { path: "/vault/shared",       component: VaultShared },
-  { path: "/vault/banned",       component: VaultBanned },
+  { path: "/vault/shared",                          component: VaultShared },
+  { path: "/vault/shared/:entityType/:entityId",    component: VaultSharedEntity },
+  { path: "/vault/banned",                          component: VaultBanned },
   { path: "/vault/projects",     component: UserProjectEntities },
   { path: "/vault/entity/:id/access", component: VaultEntityAccess },
   { path: "/vault/entity/:id",   component: VaultEntityDetail },

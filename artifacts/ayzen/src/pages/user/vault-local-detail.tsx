@@ -90,7 +90,7 @@ function SecretField({ label, value }: { label: string; value: string | null | u
       <span className={cn("flex-1 font-mono text-xs truncate", shown ? "text-foreground/90" : "text-muted-foreground/50")}>
         {shown ? value : "•".repeat(Math.min(value.length, 16))}
       </span>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-1 transition-opacity">
         <button onClick={() => setShown(s => !s)} className="p-1 rounded text-muted-foreground/40 hover:text-primary transition-colors">
           {shown ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
         </button>
