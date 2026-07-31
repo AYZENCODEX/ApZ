@@ -391,6 +391,44 @@ export default function UserWallets() {
   const [activeWalletId, setActiveWalletId] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
+  // Feature 3: EVM/SVM network type filter for Add Wallet panel
+  const [networkType, setNetworkType] = useState<"all" | "evm" | "svm">("all");
+
+  // Feature 3 & 4: Per-wallet expanded sub-tab + profile tokens (localStorage-persisted)
+  const [walletSubTab, setWalletSubTab] = useState<Record<number, "details" | "profile" | "gas">>({});
+  const [walletTokens, setWalletTokens] = useState<Record<number, Array<{ id: string; name: string; price: number; amount: number; blockchain: string }>>>(() => {
+    try { return JSON.parse(localStorage.getItem("ayzen_wallet_tokens") ?? "{}"); } catch { return {}; }
+  });
+  const [addTokenForm, setAddTokenForm] = useState<Record<number, { name: string; price: string; amount: string; blockchain: string }>>({});
+
+  const saveTokens = (next: typeof walletTokens) => {
+    setWalletTokens(next);
+    localStorage.setItem("ayzen_wallet_tokens", JSON.stringify(next));
+  };
+
+  const addToken = (walletId: number) => {
+    const f = addTokenForm[walletId];
+    if (!f?.name?.trim()) return;
+    const token = { id: Date.now().toString(), name: f.name.trim(), price: parseFloat(f.price) || 0, amount: parseFloat(f.amount) || 0, blockchain: f.blockchain || "ETH" };
+    saveTokens({ ...walletTokens, [walletId]: [...(walletTokens[walletId] ?? []), token] });
+    setAddTokenForm(prev => ({ ...prev, [walletId]: { name: "", price: "", amount: "", blockchain: "" } }));
+  };
+
+  const removeToken = (walletId: number, tokenId: string) => {
+    saveTokens({ ...walletTokens, [walletId]: (walletTokens[walletId] ?? []).filter(t => t.id !== tokenId) });
+  };
+
+  // EVM chains: all 0x-prefix chains. SVM: SOL.
+  const EVM_CHAINS = new Set(["ETH", "BSC", "MATIC", "ARB", "OP", "BASE", "AVAX", "LINEA", "ZKSYNC", "SCROLL", "FTM"]);
+  const SVM_CHAINS = new Set(["SOL"]);
+  const GAS_WARNING_CHAINS = new Set(["BSC", "BASE", "MATIC", "ARB"]);
+
+  const filteredAddChains = CHAINS.filter(c => {
+    if (networkType === "evm") return EVM_CHAINS.has(c.value);
+    if (networkType === "svm") return SVM_CHAINS.has(c.value);
+    return true;
+  });
+
   const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
   const sseRef = useRef<EventSource | null>(null);
 
@@ -646,9 +684,29 @@ export default function UserWallets() {
           </div>
           <div className="px-5 py-5 space-y-4">
             <div className="space-y-1.5">
-              <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Network / Chain</label>
+              <div className="flex items-center justify-between">
+                <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Network / Chain</label>
+                {/* EVM / SVM / All filter toggle */}
+                <div className="flex gap-0.5 p-0.5 bg-muted/20 rounded-md border border-border/30">
+                  {(["all", "evm", "svm"] as const).map(t => (
+                    <button
+                      key={t}
+                      onClick={() => { setNetworkType(t); if ((t === "svm" && EVM_CHAINS.has(form.chain)) || (t === "evm" && SVM_CHAINS.has(form.chain))) setForm(f => ({ ...f, chain: t === "evm" ? "ETH" : "SOL" })); }}
+                      className={cn(
+                        "px-2 py-0.5 rounded font-mono text-[9px] uppercase tracking-wider transition-all",
+                        networkType === t ? "bg-card text-primary font-bold shadow-sm border border-border/40" : "text-muted-foreground/50 hover:text-muted-foreground"
+                      )}
+                    >{t === "all" ? "All" : t === "evm" ? "EVM" : "SVM"}</button>
+                  ))}
+                </div>
+              </div>
+              {networkType !== "all" && (
+                <p className="font-mono text-[9px] text-muted-foreground/50">
+                  {networkType === "evm" ? "EVM = Ethereum-compatible (0x address)" : "SVM = Solana Virtual Machine"}
+                </p>
+              )}
               <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-                {CHAINS.map(c => (
+                {filteredAddChains.map(c => (
                   <button
                     key={c.value}
                     onClick={() => setForm(f => ({ ...f, chain: c.value }))}
@@ -815,76 +873,251 @@ export default function UserWallets() {
                   </div>
                 </div>
 
-                {/* Expanded details */}
-                {isExpanded && (
-                  <div className="border-t border-card-border bg-muted/10 px-4 py-4 space-y-4">
-                    {/* Stats */}
-                    <div className="grid grid-cols-3 gap-3">
-                      {[
-                        { label: "Balance", value: wallet.balance > 0 ? `${wallet.balance.toFixed(6)} ${wallet.chain}` : "—" },
-                        { label: "USD Value", value: wallet.balanceUsd > 0 ? `$${wallet.balanceUsd.toFixed(2)}` : "—" },
-                        { label: "Transactions", value: wallet.txCount > 0 ? wallet.txCount.toLocaleString() : "—" },
-                      ].map(({ label, value }) => (
-                        <div key={label} className="bg-background border border-card-border rounded-md px-3 py-2">
-                          <div className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground mb-0.5">{label}</div>
-                          <div className="font-mono text-xs font-bold text-foreground">{value}</div>
-                        </div>
-                      ))}
-                    </div>
+                {/* Expanded details — with sub-tabs: Details | Profile | Gas */}
+                {isExpanded && (() => {
+                  const subTab = walletSubTab[wallet.id] ?? "details";
+                  const setSubTab = (t: "details" | "profile" | "gas") => setWalletSubTab(prev => ({ ...prev, [wallet.id]: t }));
+                  const tokens = walletTokens[wallet.id] ?? [];
+                  const tokenForm = addTokenForm[wallet.id] ?? { name: "", price: "", amount: "", blockchain: "" };
+                  const isWarning = GAS_WARNING_CHAINS.has(wallet.chain) && wallet.balanceUsd < 0.05;
 
-                    {/* Full address */}
-                    <div className="bg-background border border-card-border rounded-md px-3 py-2">
-                      <div className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground mb-1">Full Address</div>
-                      <div className="font-mono text-[11px] text-foreground break-all">{wallet.address}</div>
-                    </div>
-
-                    {wallet.notes && (
-                      <div className="bg-background border border-card-border rounded-md px-3 py-2">
-                        <div className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground mb-1">Notes</div>
-                        <div className="font-mono text-[11px] text-foreground">{wallet.notes}</div>
+                  return (
+                    <div className="border-t border-card-border bg-muted/10">
+                      {/* Sub-tab bar */}
+                      <div className="flex items-center gap-0 border-b border-border/30 px-4">
+                        {(["details", "profile", "gas"] as const).map(t => (
+                          <button
+                            key={t}
+                            onClick={() => setSubTab(t)}
+                            className={cn(
+                              "px-3 py-2 font-mono text-[10px] uppercase tracking-wider border-b-2 -mb-px transition-all flex items-center gap-1",
+                              subTab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground/50 hover:text-muted-foreground"
+                            )}
+                          >
+                            {t === "gas" && isWarning && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />}
+                            {t}
+                          </button>
+                        ))}
                       </div>
-                    )}
 
-                    {wallet.lastSyncedAt && (
-                      <p className="text-[9px] font-mono text-muted-foreground/40">
-                        Last synced: {new Date(wallet.lastSyncedAt).toLocaleString()}
-                      </p>
-                    )}
+                      <div className="px-4 py-4 space-y-4">
+                        {/* ── Details sub-tab ── */}
+                        {subTab === "details" && <>
+                          <div className="grid grid-cols-3 gap-3">
+                            {[
+                              { label: "Balance", value: wallet.balance > 0 ? `${wallet.balance.toFixed(6)} ${wallet.chain}` : "—" },
+                              { label: "USD Value", value: wallet.balanceUsd > 0 ? `$${wallet.balanceUsd.toFixed(2)}` : "—" },
+                              { label: "Transactions", value: wallet.txCount > 0 ? wallet.txCount.toLocaleString() : "—" },
+                            ].map(({ label, value }) => (
+                              <div key={label} className="bg-background border border-card-border rounded-md px-3 py-2">
+                                <div className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground mb-0.5">{label}</div>
+                                <div className="font-mono text-xs font-bold text-foreground">{value}</div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="bg-background border border-card-border rounded-md px-3 py-2">
+                            <div className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground mb-1">Full Address</div>
+                            <div className="font-mono text-[11px] text-foreground break-all">{wallet.address}</div>
+                          </div>
+                          {wallet.notes && (
+                            <div className="bg-background border border-card-border rounded-md px-3 py-2">
+                              <div className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground mb-1">Notes</div>
+                              <div className="font-mono text-[11px] text-foreground">{wallet.notes}</div>
+                            </div>
+                          )}
+                          {wallet.lastSyncedAt && (
+                            <p className="text-[9px] font-mono text-muted-foreground/40">
+                              Last synced: {new Date(wallet.lastSyncedAt).toLocaleString()}
+                            </p>
+                          )}
+                          <div className="flex gap-2 flex-wrap">
+                            {!wallet.isPrimary && (
+                              <Button variant="outline" size="sm" onClick={() => handleSetPrimary(wallet.id)} className="font-mono text-[10px] gap-1.5 h-7 px-3 border-primary/20 text-primary hover:bg-primary/10">
+                                <Star className="w-3 h-3" /> Set Primary
+                              </Button>
+                            )}
+                            <Button variant="outline" size="sm" onClick={() => handleSync(wallet.id)} disabled={isSyncing} className="font-mono text-[10px] gap-1.5 h-7 px-3">
+                              <RefreshCw className={cn("w-3 h-3", isSyncing && "animate-spin")} />
+                              {isSyncing ? "Syncing..." : "Sync Now"}
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => setSendWallet(wallet)} className="font-mono text-[10px] gap-1.5 h-7 px-3 border-primary/20 text-primary hover:bg-primary/10">
+                              <Send className="w-3 h-3" /> Send
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => setPhraseWallet(wallet)} className="font-mono text-[10px] gap-1.5 h-7 px-3 border-amber-500/20 text-amber-400 hover:bg-amber-500/10">
+                              <Key className="w-3 h-3" /> {wallet.encryptedPhrase ? "View Phrase" : "Save Phrase"}
+                            </Button>
+                            <a href={explorerUrl(wallet.address, wallet.chain)} target="_blank" rel="noopener noreferrer">
+                              <Button variant="outline" size="sm" className="font-mono text-[10px] gap-1.5 h-7 px-3">
+                                <ExternalLink className="w-3 h-3" /> Explorer
+                              </Button>
+                            </a>
+                            <Button variant="outline" size="sm" onClick={() => handleDelete(wallet.id)} disabled={isDeleting}
+                              className="font-mono text-[10px] gap-1.5 h-7 px-3 border-red-500/20 text-red-400 hover:bg-red-500/10 ml-auto">
+                              {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                              {isDeleting ? "Removing..." : "Remove"}
+                            </Button>
+                          </div>
+                        </>}
 
-                    {/* Actions */}
-                    <div className="flex gap-2 flex-wrap">
-                      {!wallet.isPrimary && (
-                        <Button variant="outline" size="sm" onClick={() => handleSetPrimary(wallet.id)} className="font-mono text-[10px] gap-1.5 h-7 px-3 border-primary/20 text-primary hover:bg-primary/10">
-                          <Star className="w-3 h-3" /> Set Primary
-                        </Button>
-                      )}
-                      <Button variant="outline" size="sm" onClick={() => handleSync(wallet.id)} disabled={isSyncing} className="font-mono text-[10px] gap-1.5 h-7 px-3">
-                        <RefreshCw className={cn("w-3 h-3", isSyncing && "animate-spin")} />
-                        {isSyncing ? "Syncing..." : "Sync Now"}
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => setSendWallet(wallet)} className="font-mono text-[10px] gap-1.5 h-7 px-3 border-primary/20 text-primary hover:bg-primary/10">
-                        <Send className="w-3 h-3" /> Send
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => setPhraseWallet(wallet)} className="font-mono text-[10px] gap-1.5 h-7 px-3 border-amber-500/20 text-amber-400 hover:bg-amber-500/10">
-                        <Key className="w-3 h-3" /> {wallet.encryptedPhrase ? "View Phrase" : "Save Phrase"}
-                      </Button>
-                      <a href={explorerUrl(wallet.address, wallet.chain)} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" size="sm" className="font-mono text-[10px] gap-1.5 h-7 px-3">
-                          <ExternalLink className="w-3 h-3" /> Explorer
-                        </Button>
-                      </a>
-                      <Button
-                        variant="outline" size="sm"
-                        onClick={() => handleDelete(wallet.id)}
-                        disabled={isDeleting}
-                        className="font-mono text-[10px] gap-1.5 h-7 px-3 border-red-500/20 text-red-400 hover:bg-red-500/10 ml-auto"
-                      >
-                        {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                        {isDeleting ? "Removing..." : "Remove"}
-                      </Button>
+                        {/* ── Profile sub-tab — token holdings ── */}
+                        {subTab === "profile" && (
+                          <div className="space-y-3">
+                            <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/50">Token Holdings · stored locally</div>
+
+                            {/* Token list */}
+                            {tokens.length === 0 ? (
+                              <div className="py-6 text-center border border-dashed border-border/30 rounded-lg">
+                                <div className="font-mono text-[10px] text-muted-foreground/40">No tokens added yet</div>
+                              </div>
+                            ) : (
+                              <div className="space-y-1.5">
+                                <div className="grid grid-cols-12 gap-2 px-2 font-mono text-[8px] uppercase tracking-widest text-muted-foreground/40">
+                                  <span className="col-span-4">Token</span>
+                                  <span className="col-span-3 text-right">Price</span>
+                                  <span className="col-span-3 text-right">Amount</span>
+                                  <span className="col-span-2" />
+                                </div>
+                                {tokens.map(t => (
+                                  <div key={t.id} className="grid grid-cols-12 gap-2 items-center bg-background border border-card-border rounded-md px-2 py-1.5">
+                                    <div className="col-span-4">
+                                      <div className="font-mono text-xs font-bold text-foreground">{t.name}</div>
+                                      <div className="font-mono text-[9px] text-muted-foreground/50">{t.blockchain}</div>
+                                    </div>
+                                    <div className="col-span-3 text-right font-mono text-[11px] text-emerald-400">${t.price.toFixed(4)}</div>
+                                    <div className="col-span-3 text-right font-mono text-[11px] text-foreground">{t.amount}</div>
+                                    <div className="col-span-2 text-right">
+                                      <button onClick={() => removeToken(wallet.id, t.id)} className="text-muted-foreground/30 hover:text-red-400 transition-colors p-0.5">
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                                {tokens.length > 0 && (
+                                  <div className="text-right font-mono text-[10px] text-primary pt-1">
+                                    Total: ${tokens.reduce((s, t) => s + t.price * t.amount, 0).toFixed(2)}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Add token form */}
+                            <div className="border border-border/30 rounded-lg p-3 space-y-2">
+                              <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/50">Add Token</div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <input
+                                  value={tokenForm.name}
+                                  onChange={e => setAddTokenForm(p => ({ ...p, [wallet.id]: { ...tokenForm, name: e.target.value } }))}
+                                  placeholder="Token name (e.g. USDC)"
+                                  className="font-mono text-[11px] h-8 px-2 rounded-md bg-input border border-border/50 focus:outline-none focus:border-primary/50 text-foreground placeholder:text-muted-foreground/30"
+                                />
+                                <input
+                                  value={tokenForm.blockchain}
+                                  onChange={e => setAddTokenForm(p => ({ ...p, [wallet.id]: { ...tokenForm, blockchain: e.target.value } }))}
+                                  placeholder="Chain (e.g. ETH, BSC)"
+                                  className="font-mono text-[11px] h-8 px-2 rounded-md bg-input border border-border/50 focus:outline-none focus:border-primary/50 text-foreground placeholder:text-muted-foreground/30"
+                                />
+                                <input
+                                  value={tokenForm.price}
+                                  type="number"
+                                  min={0}
+                                  onChange={e => setAddTokenForm(p => ({ ...p, [wallet.id]: { ...tokenForm, price: e.target.value } }))}
+                                  placeholder="Price (USD)"
+                                  className="font-mono text-[11px] h-8 px-2 rounded-md bg-input border border-border/50 focus:outline-none focus:border-primary/50 text-foreground placeholder:text-muted-foreground/30"
+                                />
+                                <input
+                                  value={tokenForm.amount}
+                                  type="number"
+                                  min={0}
+                                  onChange={e => setAddTokenForm(p => ({ ...p, [wallet.id]: { ...tokenForm, amount: e.target.value } }))}
+                                  placeholder="Amount"
+                                  className="font-mono text-[11px] h-8 px-2 rounded-md bg-input border border-border/50 focus:outline-none focus:border-primary/50 text-foreground placeholder:text-muted-foreground/30"
+                                />
+                              </div>
+                              <Button size="sm" onClick={() => addToken(wallet.id)} disabled={!tokenForm.name?.trim()} className="font-mono text-[10px] gap-1.5 h-7">
+                                <Plus className="w-3 h-3" /> Add Token
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ── Gas sub-tab ── */}
+                        {subTab === "gas" && (
+                          <div className="space-y-3">
+                            <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/50">Gas Balance · Native Token</div>
+
+                            {/* Current chain gas card */}
+                            <div className={cn(
+                              "rounded-lg border p-4 space-y-2",
+                              isWarning ? "border-amber-400/40 bg-amber-400/5" : "border-card-border bg-background"
+                            )}>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-3 h-3 rounded-full" style={{ background: info.color }} />
+                                  <span className="font-mono font-bold text-sm text-foreground">{info.label}</span>
+                                  <span className="font-mono text-[9px] text-muted-foreground/50 uppercase">{wallet.chain}</span>
+                                </div>
+                                {isWarning && (
+                                  <span className="flex items-center gap-1 font-mono text-[9px] text-amber-400 bg-amber-400/10 border border-amber-400/30 rounded-full px-2 py-0.5">
+                                    <AlertCircle className="w-3 h-3" /> LOW GAS
+                                  </span>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <div className="font-mono text-[9px] text-muted-foreground/50 uppercase mb-0.5">Native Balance</div>
+                                  <div className="font-mono font-bold text-foreground">{wallet.balance > 0 ? `${wallet.balance.toFixed(6)} ${wallet.chain}` : "Not synced"}</div>
+                                </div>
+                                <div>
+                                  <div className="font-mono text-[9px] text-muted-foreground/50 uppercase mb-0.5">USD Value</div>
+                                  <div className={cn("font-mono font-bold", wallet.balanceUsd > 0 ? (isWarning ? "text-amber-400" : "text-emerald-400") : "text-muted-foreground/50")}>
+                                    {wallet.balanceUsd > 0 ? `$${wallet.balanceUsd.toFixed(4)}` : "—"}
+                                  </div>
+                                </div>
+                              </div>
+                              {isWarning && (
+                                <div className="flex items-start gap-2 pt-1 border-t border-amber-400/20">
+                                  <AlertCircle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+                                  <p className="font-mono text-[10px] text-amber-400/80">
+                                    Balance below $0.05 — transactions on {info.label} may fail. Top up {wallet.chain} to continue farming.
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Warning thresholds info */}
+                            <div className="border border-border/20 rounded-lg p-3 space-y-1.5">
+                              <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40">Warning Threshold — $0.05</div>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                {["BSC", "BASE", "MATIC", "ARB"].map(c => {
+                                  const ci = chainInfo(c);
+                                  const isThisChain = wallet.chain === c;
+                                  return (
+                                    <div key={c} className={cn(
+                                      "flex items-center gap-2 px-2 py-1.5 rounded-md font-mono text-[10px]",
+                                      isThisChain ? (isWarning ? "bg-amber-400/10 text-amber-400 border border-amber-400/20" : "bg-emerald-400/5 text-emerald-400 border border-emerald-400/20") : "text-muted-foreground/40"
+                                    )}>
+                                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: ci.color }} />
+                                      <span>{ci.label}</span>
+                                      {isThisChain && <span className="ml-auto text-[9px]">{wallet.balanceUsd > 0 ? `$${wallet.balanceUsd.toFixed(3)}` : "—"}</span>}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <p className="font-mono text-[9px] text-muted-foreground/30 pt-1">
+                                Wallets on these chains are monitored. Warnings fire when native token balance drops below $0.05.
+                              </p>
+                            </div>
+
+                            <Button variant="outline" size="sm" onClick={() => handleSync(wallet.id)} disabled={isSyncing} className="font-mono text-[10px] gap-1.5 h-7 px-3">
+                              <RefreshCw className={cn("w-3 h-3", isSyncing && "animate-spin")} />
+                              {isSyncing ? "Syncing..." : "Refresh Balance"}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             );
           })}

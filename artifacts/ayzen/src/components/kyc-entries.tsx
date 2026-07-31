@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import {
   Plus, Trash2, Edit2, ShieldCheck, Building2, Loader2,
   Search, User, Mail as MailIcon, KeyRound, X, CheckCircle2, XCircle,
-  Share2, Users, Ban, ShieldOff,
+  Share2, Users, Ban, ShieldOff, MoreVertical,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -444,6 +444,7 @@ export default function KycEntries() {
   const [shareItems, setShareItems] = useState<ShareTarget[] | null>(null);
   const [shareLabel, setShareLabel] = useState<string | undefined>(undefined);
   const [managingShares, setManagingShares] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const { toast } = useToast();
 
   const toggleSelected = (id: number) => {
@@ -556,23 +557,39 @@ export default function KycEntries() {
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={ev => ev.stopPropagation()}>
-                  <button onClick={() => shareOne(e)} className="p-1 rounded text-muted-foreground/40 hover:text-primary transition-colors" title="Share">
-                    <Share2 className="w-3 h-3" />
-                  </button>
-                  <button onClick={() => openEdit(e)} className="p-1 rounded text-muted-foreground/40 hover:text-primary transition-colors">
-                    <Edit2 className="w-3 h-3" />
-                  </button>
+                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity relative" onClick={ev => ev.stopPropagation()}>
                   <button
-                    onClick={() => handleBan(e)}
-                    className={cn("p-1 rounded transition-colors", e.status === "banned" ? "text-muted-foreground/40 hover:text-emerald-400" : "text-muted-foreground/40 hover:text-amber-400")}
-                    title={e.status === "banned" ? "Unban" : "Ban"}
+                    onClick={() => setOpenMenuId(openMenuId === e.id ? null : e.id)}
+                    className="p-1 rounded text-muted-foreground/40 hover:text-foreground hover:bg-muted/40 transition-colors"
                   >
-                    {e.status === "banned" ? <ShieldOff className="w-3 h-3" /> : <Ban className="w-3 h-3" />}
+                    <MoreVertical className="w-3.5 h-3.5" />
                   </button>
-                  <button onClick={() => setDeleteId(e.id)} className="p-1 rounded text-muted-foreground/40 hover:text-red-400 transition-colors">
-                    <Trash2 className="w-3 h-3" />
-                  </button>
+                  {openMenuId === e.id && (
+                    <div className="absolute right-0 top-full mt-1 z-50 bg-card border border-card-border rounded-xl shadow-2xl p-2 min-w-max">
+                      <div className="grid grid-cols-4 gap-1">
+                        {([
+                          { icon: Edit2, label: "Edit", action: () => openEdit(e), cls: "" },
+                          { icon: Share2, label: "Share", action: () => shareOne(e), cls: "" },
+                          { icon: e.status === "banned" ? ShieldOff : Ban, label: e.status === "banned" ? "Unban" : "Ban", action: () => handleBan(e), cls: "" },
+                          { icon: Trash2, label: "Del", action: () => setDeleteId(e.id), cls: "text-red-400 hover:bg-red-400/10 hover:border-red-400/30 hover:text-red-400" },
+                        ] as const).map(({ icon: Icon, label, action, cls }) => (
+                          <button
+                            key={label}
+                            onClick={() => { action(); setOpenMenuId(null); }}
+                            title={label}
+                            className={cn(
+                              "flex flex-col items-center justify-center gap-0.5 w-9 h-9 rounded-lg border transition-all",
+                              "border-border/30 text-muted-foreground/60 hover:bg-muted/30 hover:text-foreground hover:border-border/60",
+                              cls
+                            )}
+                          >
+                            <Icon className="w-3 h-3" />
+                            <span className="font-mono text-[7px] uppercase leading-none">{label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               <p className="font-mono text-sm font-bold text-foreground truncate mb-1">{e.name || "Unnamed"}</p>

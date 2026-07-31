@@ -427,6 +427,10 @@ function EntityManager() {
   const [shareLabel, setShareLabel] = useState<string | undefined>(undefined);
   const [managingShares, setManagingShares] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
+  // 3-dot card menu — tracks which card's dropdown is currently open
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  // Form dialog key — incremented each time dialog opens so React freshly mounts it
+  const [dialogKey, setDialogKey] = useState(0);
 
   const shareOne = (entry: EntryAny) => { setShareItems([{ entityType: "entity", entityId: entry.id }]); setShareLabel(entry.projectName || `Entity #${entry.id}`); };
   const shareSelected = () => { setShareItems(selectedIds.map(id => ({ entityType: "entity" as const, entityId: id }))); setShareLabel(undefined); };
@@ -631,6 +635,7 @@ function EntityManager() {
     setWalletSubTab("manual");
     setDriveForm({ label: entry.driveWalletLabel ?? "", address: entry.driveWalletAddress ?? "", note: entry.driveWalletNote ?? "" });
     setDriveLocked(!!entry.driveWalletSetAt);
+    setDialogKey(k => k + 1);
     setOpen(true);
   };
 
@@ -954,7 +959,7 @@ function EntityManager() {
           <Button size="sm" variant="outline" onClick={() => setManagingShares(true)} className="font-mono text-xs gap-1.5 h-8">
             <Users className="w-3 h-3" /> Shares
           </Button>
-          <Button size="sm" onClick={() => { resetForm(); setEditId(null); setOpen(true); }} className="font-mono text-xs gap-1.5 h-8">
+          <Button size="sm" onClick={() => { resetForm(); setEditId(null); setDialogKey(k => k + 1); setOpen(true); }} className="font-mono text-xs gap-1.5 h-8">
             <Plus className="w-3.5 h-3.5" /> New Entity
           </Button>
         </div>
@@ -1040,32 +1045,55 @@ function EntityManager() {
                   </Badge>
                   <RankBadge score={performanceScoreFor(entry)} showLabel={false} size={16} />
                 </div>
-                <div className={cn("flex items-center gap-1 transition-opacity", selectMode ? "opacity-0 pointer-events-none" : "opacity-0 group-hover:opacity-100")}>
+                <div className={cn("flex items-center gap-0.5 transition-opacity", selectMode ? "opacity-0 pointer-events-none" : "opacity-0 group-hover:opacity-100")}>
                   <button
                     onClick={e => { e.stopPropagation(); togglePin(entry.id); }}
                     className={cn("p-1 rounded transition-all", pinned.includes(entry.id) ? "text-amber-400" : "text-muted-foreground/40 hover:text-amber-400")}
                   >
                     <Star className="w-3 h-3" fill={pinned.includes(entry.id) ? "currentColor" : "none"} />
                   </button>
-                  <button
-                    onClick={e => { e.stopPropagation(); shareOne(entry); }}
-                    className="p-1 rounded text-muted-foreground/40 hover:text-primary transition-colors"
-                    title="Share"
-                  >
-                    <Share2 className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={e => { e.stopPropagation(); openEdit(entry); }}
-                    className="p-1 rounded text-muted-foreground/40 hover:text-primary transition-colors"
-                  >
-                    <Edit2 className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={e => { e.stopPropagation(); setDeleteId(entry.id); }}
-                    className="p-1 rounded text-muted-foreground/40 hover:text-red-400 transition-colors"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
+                  {/* 3-dot action menu */}
+                  <div className="relative">
+                    <button
+                      onClick={e => { e.stopPropagation(); setOpenMenuId(openMenuId === entry.id ? null : entry.id); }}
+                      className="p-1 rounded text-muted-foreground/40 hover:text-foreground hover:bg-muted/40 transition-colors"
+                    >
+                      <MoreVertical className="w-3.5 h-3.5" />
+                    </button>
+                    {openMenuId === entry.id && (
+                      <div
+                        className="absolute right-0 top-full mt-1 z-50 bg-card border border-card-border rounded-xl shadow-2xl p-2"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <div className="grid grid-cols-4 gap-1">
+                          {([
+                            { icon: Edit2, label: "Edit", action: () => openEdit(entry), cls: "" },
+                            { icon: Share2, label: "Share", action: () => shareOne(entry), cls: "" },
+                            { icon: Tag, label: "Tag", action: () => { setSelectedIds([entry.id]); setBulkTagAction("add"); setBulkTagValue(""); setBulkTagOpen(true); }, cls: "" },
+                            { icon: Download, label: "Exprt", action: () => { setSelectedIds([entry.id]); setTimeout(() => exportSelected("json"), 0); }, cls: "" },
+                            { icon: Upload, label: "Imprt", action: () => importRef.current?.click(), cls: "" },
+                            { icon: Ban, label: "Ban", action: () => { setSelectedIds([entry.id]); setBulkStatusValue("banned"); setBulkStatusOpen(true); }, cls: "" },
+                            { icon: ShieldAlert, label: "Stat", action: () => { setSelectedIds([entry.id]); setBulkStatusValue("active"); setBulkStatusOpen(true); }, cls: "" },
+                            { icon: Trash2, label: "Del", action: () => setDeleteId(entry.id), cls: "text-red-400 hover:bg-red-400/10 hover:border-red-400/30 hover:text-red-400" },
+                          ] as const).map(({ icon: Icon, label, action, cls }) => (
+                            <button
+                              key={label}
+                              onClick={() => { action(); setOpenMenuId(null); }}
+                              title={label}
+                              className={cn(
+                                "flex flex-col items-center justify-center gap-0.5 w-9 h-9 rounded-lg border transition-all",
+                                "border-border/30 text-muted-foreground/60 hover:bg-muted/30 hover:text-foreground hover:border-border/60",
+                                cls
+                              )}
+                            >
+                              <Icon className="w-3 h-3" />
+                              <span className="font-mono text-[7px] uppercase leading-none">{label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1343,8 +1371,8 @@ function EntityManager() {
         </DialogContent>
       </Dialog>
 
-      {/* Add / Edit dialog */}
-      <Dialog open={open} onOpenChange={v => { if (!v) { setOpen(false); resetForm(); setEditId(null); } }}>
+      {/* Add / Edit dialog — key changes on each open to guarantee fresh mount (Feature 1: form isolation) */}
+      <Dialog key={dialogKey} open={open} onOpenChange={v => { if (!v) { setOpen(false); resetForm(); setEditId(null); } }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col p-0">
           <DialogHeader className="px-5 pt-5 pb-3 flex-shrink-0 border-b border-card-border">
             <DialogTitle className="font-mono text-sm">{editId ? "Edit Entity" : "Add Entity"}</DialogTitle>

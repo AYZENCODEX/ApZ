@@ -305,41 +305,30 @@ function AccountCard({
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 top-8 bg-popover border border-border rounded-lg shadow-xl min-w-[130px] overflow-hidden z-50">
-                <button
-                  onClick={() => { onView(account); setMenuOpen(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-left font-mono text-[11px] hover:bg-primary/10 hover:text-primary transition-colors"
-                >
-                  <Eye className="w-3 h-3" /> View
-                </button>
-                <button
-                  onClick={() => { onEdit(account); setMenuOpen(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-left font-mono text-[11px] hover:bg-primary/10 hover:text-primary transition-colors"
-                >
-                  <Edit3 className="w-3 h-3" /> Edit
-                </button>
-                <button
-                  onClick={() => { onShare(account); setMenuOpen(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-left font-mono text-[11px] hover:bg-primary/10 hover:text-primary transition-colors"
-                >
-                  <Share2 className="w-3 h-3" /> Share
-                </button>
-                <button
-                  onClick={() => { onBan(account); setMenuOpen(false); }}
-                  className={cn(
-                    "w-full flex items-center gap-2 px-3 py-2 text-left font-mono text-[11px] transition-colors",
-                    isBanned ? "text-emerald-400 hover:bg-emerald-400/10" : "text-amber-400 hover:bg-amber-400/10"
-                  )}
-                >
-                  {isBanned ? <ShieldOff className="w-3 h-3" /> : <Ban className="w-3 h-3" />}
-                  {isBanned ? "Unban" : "Ban"}
-                </button>
-                <button
-                  onClick={() => { onDelete(account.id); setMenuOpen(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-left font-mono text-[11px] text-red-400 hover:bg-red-400/10 transition-colors"
-                >
-                  <Trash2 className="w-3 h-3" /> Delete
-                </button>
+              <div className="absolute right-0 top-8 bg-card border border-card-border rounded-xl shadow-2xl p-2 z-50 min-w-max">
+                <div className="grid grid-cols-4 gap-1">
+                  {([
+                    { icon: Eye, label: "View", action: () => onView(account), cls: "" },
+                    { icon: Edit3, label: "Edit", action: () => onEdit(account), cls: "" },
+                    { icon: Share2, label: "Share", action: () => onShare(account), cls: "" },
+                    { icon: isBanned ? ShieldOff : Ban, label: isBanned ? "Unban" : "Ban", action: () => onBan(account), cls: isBanned ? "text-emerald-400 hover:bg-emerald-400/10" : "text-amber-400 hover:bg-amber-400/10" },
+                    { icon: Trash2, label: "Del", action: () => onDelete(account.id), cls: "text-red-400 hover:bg-red-400/10 hover:border-red-400/30 hover:text-red-400" },
+                  ] as const).map(({ icon: Icon, label, action, cls }) => (
+                    <button
+                      key={label}
+                      onClick={() => { action(); setMenuOpen(false); }}
+                      title={label}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-0.5 w-9 h-9 rounded-lg border transition-all",
+                        "border-border/30 text-muted-foreground/60 hover:bg-muted/30 hover:text-foreground hover:border-border/60",
+                        cls
+                      )}
+                    >
+                      <Icon className="w-3 h-3" />
+                      <span className="font-mono text-[7px] uppercase leading-none">{label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </>
           )}
