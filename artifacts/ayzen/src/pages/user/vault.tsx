@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { RankBadge, getEntityRank } from "@/lib/entity-rank";
 import { computeEntityPerformanceScore, type EntityLeaderboardRow } from "@/lib/performance-score";
 import LocalAccounts from "@/components/local-accounts";
+import { LocalEntityPicker } from "@/components/vault/local-entity-picker";
 import KycEntries from "@/components/kyc-entries";
 import GameEntries from "@/components/game-entries";
 import { QRCodeSVG } from "qrcode.react";
@@ -391,6 +392,11 @@ function EntityManager() {
   const [otherAccounts, setOtherAccounts] = useState<OtherAccount[]>([]);
   const [formTab, setFormTab] = useState("wallet");
   const [formSubTab, setFormSubTab] = useState("main");
+  // Local entity picker state — tracks which local account (if any) the user
+  // imported credentials from for the active platform tab. Cleared on close.
+  const [localPlatformLink, setLocalPlatformLink] = useState<{ id: number; label: string } | null>(null);
+  const [localAccsForPicker, setLocalAccsForPicker] = useState<any[]>([]);
+  const [localAccPickerLoading, setLocalAccPickerLoading] = useState(false);
   const [formEmailSubTab, setFormEmailSubTab] = useState("account");
   const [emailAccounts, setEmailAccounts] = useState<EmailAccount[]>([]);
   const [emailAccountsLoading, setEmailAccountsLoading] = useState(false);
@@ -433,6 +439,19 @@ function EntityManager() {
       fetchEmailAccounts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, formTab]);
+
+  // Fetch local accounts for the current platform tab so the picker can
+  // suggest credentials to import. Clear state when dialog closes.
+  useEffect(() => {
+    if (!open) { setLocalPlatformLink(null); setLocalAccsForPicker([]); return; }
+    if (!["twitter", "discord", "telegram"].includes(formTab)) return;
+    setLocalAccPickerLoading(true);
+    customFetch<any[]>(`/api/local-accounts?category=${formTab}`)
+      .then(d => setLocalAccsForPicker(Array.isArray(d) ? d : []))
+      .catch(() => setLocalAccsForPicker([]))
+      .finally(() => setLocalAccPickerLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, formTab]);
 
   const allEntries: EntryAny[] = (data as EntryAny[] | undefined) ?? [];
@@ -1514,6 +1533,28 @@ function EntityManager() {
               </div>
             )}
 
+            {(formTab === "twitter" || formTab === "discord" || formTab === "telegram") && formSubTab === "main" && (
+              <LocalEntityPicker
+                platform={formTab as "twitter" | "discord" | "telegram"}
+                accounts={localAccsForPicker}
+                loading={localAccPickerLoading}
+                linked={localPlatformLink}
+                onImport={(acc) => {
+                  const p = formTab as "twitter" | "discord" | "telegram";
+                  const u: Record<string, string> = {};
+                  if (acc.username) u[p === "twitter" ? "twitterUsername" : p === "discord" ? "discordUsername" : "telegramUsername"] = acc.username;
+                  if (acc.password) u[p === "twitter" ? "twitterPassword" : p === "discord" ? "discordPassword" : "telegramPassword"] = acc.password;
+                  if (acc.email)    u[p === "telegram" ? "telegramLinkedEmail" : p === "twitter" ? "twitterEmail" : "discordEmail"] = acc.email;
+                  if (acc.twofa)    u[p === "twitter" ? "twitter2fa" : p === "discord" ? "discord2fa" : "telegram2fa"] = acc.twofa;
+                  if (acc.followers) u[p === "twitter" ? "twitterFollowers" : p === "discord" ? "discordFollowers" : "telegramFollowers"] = acc.followers;
+                  setForm(prev => ({ ...prev, ...u }));
+                  setLocalPlatformLink({ id: acc.id, label: acc.label ?? acc.username ?? `#${acc.id}` });
+                  // Persist the link on the local account — best-effort, non-blocking
+                  customFetch(`/api/local-accounts/${acc.id}/link-vault`, { method: "PATCH", body: JSON.stringify({ vaultEntryId: editId ?? 0 }) }).catch(() => {});
+                }}
+                onClear={() => setLocalPlatformLink(null)}
+              />
+            )}
             {(formTab === "twitter" || formTab === "discord" || formTab === "telegram") && (
               <SchemaForm
                 fields={ENTITY_FIELDS.filter(fld => fld.tab === formTab && fld.subtab === formSubTab)}

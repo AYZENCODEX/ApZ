@@ -202,4 +202,31 @@ router.delete("/vault-entity-links/:id", requireAuth, async (req, res): Promise<
   }
 });
 
+// ─── GET /vault/links/all — every link across all of the user's entities ──────
+// Returns enriched rows (entity names + categories on both sides) so the
+// Enrollment → Linked page can render the full relationship map without N+1.
+router.get("/vault/links/all", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.user!.userId;
+  try {
+    const result = await db.execute(
+      // Raw SQL — the Drizzle ORM join API requires declared FKs which this
+      // table intentionally omits (see schema comment). Aliases disambiguate
+      // the two vault_entries joins.
+      sql.raw(`
+        SELECT vel.id, vel.entity_id, vel.linked_entity_id, vel.relation_type, vel.note, vel.created_at,
+               e1.project_name   AS entity_name,       e1.category AS entity_category,       e1.entity_serial,
+               e2.project_name   AS linked_entity_name, e2.category AS linked_entity_category, e2.entity_serial AS linked_entity_serial
+        FROM vault_entity_links vel
+        JOIN vault_entries e1 ON e1.id = vel.entity_id
+        JOIN vault_entries e2 ON e2.id = vel.linked_entity_id
+        WHERE vel.user_id = ${userId}
+        ORDER BY vel.created_at DESC
+      `)
+    );
+    res.json(result.rows);
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to fetch links", detail: err?.message });
+  }
+});
+
 export default router;

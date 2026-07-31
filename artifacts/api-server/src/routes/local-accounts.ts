@@ -29,14 +29,18 @@ const safeScore = (v: unknown) => {
 };
 
 // ─── GET /local-accounts — list user's accounts ───────────────────────────────
+// Supports ?category=twitter&linked=false (unlinked only) or ?vaultEntryId=123
 router.get("/local-accounts", requireAuth, async (req, res): Promise<void> => {
   const userId = req.user!.userId;
   const category = (req.query.category as string) || null;
+  const linkedParam = req.query.linked as string | undefined;   // "false" = only unlinked
+  const vaultEntryId = req.query.vaultEntryId ? parseInt(req.query.vaultEntryId as string) : null;
   try {
-    const q = category
-      ? sql.raw(`SELECT * FROM local_accounts WHERE user_id = ${userId} AND category = ${safe(category)} ORDER BY created_at DESC`)
-      : sql.raw(`SELECT * FROM local_accounts WHERE user_id = ${userId} ORDER BY created_at DESC`);
-    const result = await db.execute(q);
+    let where = `user_id = ${userId}`;
+    if (category) where += ` AND category = ${safe(category)}`;
+    if (linkedParam === "false") where += ` AND vault_entry_id IS NULL`;
+    if (vaultEntryId && !isNaN(vaultEntryId)) where += ` AND vault_entry_id = ${vaultEntryId}`;
+    const result = await db.execute(sql.raw(`SELECT * FROM local_accounts WHERE ${where} ORDER BY created_at DESC`));
     res.json(decryptRows(result.rows as any[], LOCAL_SENSITIVE_FIELDS));
   } catch (err: any) {
     res.status(500).json({ error: "DB error", detail: err?.message });
@@ -151,6 +155,42 @@ router.delete("/local-accounts/:id", requireAuth, async (req, res): Promise<void
     await db.execute(sql.raw(`DELETE FROM local_accounts WHERE id = ${id} AND user_id = ${userId}`));
     syncOnLocalAccountDelete(id).catch(() => {});
     res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: "DB error", detail: err?.message });
+  }
+});
+
+// ─── PATCH /local-accounts/:id/link-vault — link to a vault entry ────────────
+router.patch("/local-accounts/:id/link-vault", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.user!.userId;
+  const id = parseInt(req.params.id as string);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const { vaultEntryId } = req.body as { vaultEntryId: number };
+  if (!vaultEntryId || isNaN(Number(vaultEntryId))) { res.status(400).json({ error: "vaultEntryId required" }); return; }
+  try {
+    const result = await db.execute(sql.raw(
+      `UPDATE local_accounts SET vault_entry_id = ${Number(vaultEntryId)}, updated_at = NOW()
+       WHERE id = ${id} AND user_id = ${userId} RETURNING *`
+    ));
+    if (!result.rows.length) { res.status(404).json({ error: "Not found" }); return; }
+    res.json(decryptRow(result.rows[0] as any, LOCAL_SENSITIVE_FIELDS));
+  } catch (err: any) {
+    res.status(500).json({ error: "DB error", detail: err?.message });
+  }
+});
+
+// ─── PATCH /local-accounts/:id/unlink-vault — remove vault link ──────────────
+router.patch("/local-accounts/:id/unlink-vault", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.user!.userId;
+  const id = parseInt(req.params.id as string);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  try {
+    const result = await db.execute(sql.raw(
+      `UPDATE local_accounts SET vault_entry_id = NULL, updated_at = NOW()
+       WHERE id = ${id} AND user_id = ${userId} RETURNING *`
+    ));
+    if (!result.rows.length) { res.status(404).json({ error: "Not found" }); return; }
+    res.json(decryptRow(result.rows[0] as any, LOCAL_SENSITIVE_FIELDS));
   } catch (err: any) {
     res.status(500).json({ error: "DB error", detail: err?.message });
   }

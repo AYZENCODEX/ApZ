@@ -102,6 +102,50 @@ router.get("/projects/entity/:vaultEntryId/overview", requireAuth, async (req, r
   }
 });
 
+// GET /projects/enrolled — projects the current user has entities enrolled in
+// Used by Enrollment → Project sidebar page. Returns projects with their
+// enrolled entity count. Only active/completed enrollments (not cancelled/banned).
+router.get("/projects/enrolled", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.user!.userId;
+  try {
+    const result = await db.execute(sql.raw(`
+      SELECT p.id, p.name, p.category, p.status,
+             COUNT(DISTINCT pe.vault_entry_id)::int AS enrolled_count
+      FROM projects p
+      JOIN project_enrollments pe ON pe.project_id = p.id AND pe.user_id = ${userId}
+      WHERE pe.status NOT IN ('cancelled', 'banned')
+      GROUP BY p.id, p.name, p.category, p.status
+      ORDER BY p.name
+    `));
+    res.json(result.rows);
+  } catch (err: any) {
+    res.status(500).json({ error: "DB error", detail: err?.message });
+  }
+});
+
+// GET /projects/:id/enrolled-entities — vault entities enrolled in a specific project
+// Used by Enrollment → Project drill-down when the user clicks a project row.
+router.get("/projects/:id/enrolled-entities", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.user!.userId;
+  const projectId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (isNaN(projectId)) { res.status(400).json({ error: "Invalid project id" }); return; }
+  try {
+    const result = await db.execute(sql.raw(`
+      SELECT ve.id, ve.project_name, ve.category, ve.entity_serial, ve.status,
+             ve.twitter_username, ve.discord_username, ve.telegram_username,
+             pe.status AS enrollment_status
+      FROM project_enrollments pe
+      JOIN vault_entries ve ON ve.id = pe.vault_entry_id
+      WHERE pe.project_id = ${projectId} AND pe.user_id = ${userId}
+        AND pe.status NOT IN ('cancelled', 'banned')
+      ORDER BY pe.created_at DESC
+    `));
+    res.json(result.rows);
+  } catch (err: any) {
+    res.status(500).json({ error: "DB error", detail: err?.message });
+  }
+});
+
 // GET /projects/entity-leaderboard — all entities ranked by ROI (MUST be before /:id)
 router.get("/projects/entity-leaderboard", requireAuth, async (req, res): Promise<void> => {
   const userId = req.user!.userId;

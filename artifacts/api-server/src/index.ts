@@ -1703,6 +1703,11 @@ const MIGRATIONS = [
   "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS discord_banned BOOLEAN NOT NULL DEFAULT FALSE",
   "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS telegram_banned BOOLEAN NOT NULL DEFAULT FALSE",
   "ALTER TABLE local_accounts ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active'",
+  // vault_entry_id links a local account to the vault entity that "owns" it —
+  // set when the user imports a local entity's credentials into a vault entity
+  // platform slot (Twitter / Discord / Telegram). Nullable: unlinked accounts
+  // are "free" and can be imported into a new entity.
+  "ALTER TABLE local_accounts ADD COLUMN IF NOT EXISTS vault_entry_id INTEGER",
   "ALTER TABLE kyc_entries ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active'",
   // New credential fields — account-level 2FA/backup + per-platform email2fa/backup/recovery
   "ALTER TABLE vault_entries ADD COLUMN IF NOT EXISTS account_2fa TEXT",
