@@ -97,7 +97,7 @@ const VaultMailCategory      = lazy(() => import("@/pages/user/vault-mail-catego
 const VaultMailEntity        = lazy(() => import("@/pages/user/vault-mail-entity"));
 const VaultMailMessageDetail = lazy(() => import("@/pages/user/vault-mail-message-detail"));
 // Phase 4 — Vault Sidebar Restructure (Enroll / Security / Backup / Shared)
-const VaultEnroll       = lazy(() => import("@/pages/user/vault-enroll"));
+const VaultEnrollmentEntity         = lazy(() => import("@/pages/user/vault-enroll"));
 const VaultEnrollmentOverview       = lazy(() => import("@/pages/user/vault-enrollment-overview"));
 const VaultEnrollmentProject        = lazy(() => import("@/pages/user/vault-enrollment-project"));
 const VaultEnrollmentProjectDetail  = lazy(() => import("@/pages/user/vault-enrollment-project-detail"));
@@ -218,9 +218,9 @@ export const USER_ROUTES: RouteConfig[] = [
   { path: "/leaderboard",        component: UserLeaderboard },
   { path: "/vault",              component: UserVault },
   // Phase 4 — Vault Sidebar Restructure (Enroll / Security / Backup / Shared)
-  { path: "/vault/enroll",       component: VaultEnroll },
-  // Enrollment hub — Overview / Project / Linked
+  // Enrollment hub — Overview / Entity / Project / Linked
   { path: "/vault/enrollment/overview",          component: VaultEnrollmentOverview },
+  { path: "/vault/enrollment/entity",            component: VaultEnrollmentEntity },
   // Project list must come before /:id so the literal "project" isn't swallowed
   { path: "/vault/enrollment/project",           component: VaultEnrollmentProject },
   { path: "/vault/enrollment/project/:id",       component: VaultEnrollmentProjectDetail },

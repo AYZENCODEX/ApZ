@@ -12,7 +12,7 @@ import { Link, useLocation } from "wouter";
 import {
   Wallet, ShieldCheck, Mail, BookKey,
   LayoutDashboard, FolderGit2, Link2,
-  Share2, Ban, Lock, Home,
+  Share2, Ban, Lock, Home, Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +32,7 @@ const ACCESS_ITEMS = [
 // ── ENROLLMENT — enroll management hierarchy ─────────────────────────────────
 const ENROLL_ITEMS = [
   { href: "/vault/enrollment/overview", label: "Overview", icon: LayoutDashboard },
+  { href: "/vault/enrollment/entity",   label: "Entity",   icon: Shield },
   { href: "/vault/enrollment/project",  label: "Project",  icon: FolderGit2 },
   { href: "/vault/enrollment/linked",   label: "Linked",   icon: Link2 },
 ] as const;
