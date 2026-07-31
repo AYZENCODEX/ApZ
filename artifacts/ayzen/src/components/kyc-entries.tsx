@@ -538,7 +538,7 @@ export default function KycEntries() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {filtered.map(e => (
-            <div key={e.id} className={cn("bg-card border rounded-xl p-4 hover:border-primary/30 transition-all group relative", e.status === "banned" ? "border-red-400/40" : selectedIds.has(e.id) ? "border-primary/50" : "border-card-border")}>
+            <div key={e.id} onClick={() => navigate(`/vault/kyc/${e.id}`)} className={cn("bg-card border rounded-xl p-4 hover:border-primary/30 transition-all group relative cursor-pointer", e.status === "banned" ? "border-red-400/40" : selectedIds.has(e.id) ? "border-primary/50" : "border-card-border")}>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Checkbox checked={selectedIds.has(e.id)} onCheckedChange={() => toggleSelected(e.id)} />
@@ -549,7 +549,7 @@ export default function KycEntries() {
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={ev => ev.stopPropagation()}>
                   <button onClick={() => shareOne(e)} className="p-1 rounded text-muted-foreground/40 hover:text-primary transition-colors" title="Share">
                     <Share2 className="w-3 h-3" />
                   </button>

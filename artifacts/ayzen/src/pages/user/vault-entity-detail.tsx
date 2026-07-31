@@ -648,8 +648,8 @@ function VaultEntityDetailContent() {
                 <FollowerEntryButton onClick={() => openFollowerDialog(undefined)} />
               </div>
               <div className="pt-3 space-y-2">
-                <ValuePnlPanel metric="value" />
-                <ValuePnlPanel metric="follower" />
+                <ValuePnlPanel metric="value" sourceType="vault" sourceId={entry.id} target="entity" />
+                <ValuePnlPanel metric="follower" sourceType="vault" sourceId={entry.id} target="entity" />
               </div>
             </Section>
           )}
@@ -733,8 +733,8 @@ function VaultEntityDetailContent() {
                 <FollowerEntryButton onClick={() => openFollowerDialog("twitter")} />
               </div>
               <div className="pt-3 space-y-2">
-                <ValuePnlPanel metric="value" title="Twitter Value P&L" />
-                <ValuePnlPanel metric="follower" title="Twitter Followers History" />
+                <ValuePnlPanel metric="value" title="Twitter Value P&L" sourceType="vault" sourceId={entry.id} target="twitter" />
+                <ValuePnlPanel metric="follower" title="Twitter Followers History" sourceType="vault" sourceId={entry.id} target="twitter" />
               </div>
             </Section>
           )}
@@ -818,8 +818,8 @@ function VaultEntityDetailContent() {
                 <FollowerEntryButton onClick={() => openFollowerDialog("discord")} />
               </div>
               <div className="pt-3 space-y-2">
-                <ValuePnlPanel metric="value" title="Discord Value P&L" />
-                <ValuePnlPanel metric="follower" title="Discord Members History" />
+                <ValuePnlPanel metric="value" title="Discord Value P&L" sourceType="vault" sourceId={entry.id} target="discord" />
+                <ValuePnlPanel metric="follower" title="Discord Members History" sourceType="vault" sourceId={entry.id} target="discord" />
               </div>
             </Section>
           )}
@@ -902,8 +902,8 @@ function VaultEntityDetailContent() {
                 <FollowerEntryButton onClick={() => openFollowerDialog("telegram")} />
               </div>
               <div className="pt-3 space-y-2">
-                <ValuePnlPanel metric="value" title="Telegram Value P&L" />
-                <ValuePnlPanel metric="follower" title="Telegram Followers History" />
+                <ValuePnlPanel metric="value" title="Telegram Value P&L" sourceType="vault" sourceId={entry.id} target="telegram" />
+                <ValuePnlPanel metric="follower" title="Telegram Followers History" sourceType="vault" sourceId={entry.id} target="telegram" />
               </div>
             </Section>
           )}

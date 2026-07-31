@@ -13,10 +13,15 @@ router.get("/value-history/pnl", requireAuth, async (req, res): Promise<void> =>
   const userId = req.user!.userId;
   const period = [7, 14, 28].includes(Number(req.query.period)) ? Number(req.query.period) : 7;
   const metric = req.query.metric === "follower" ? "follower" : "value";
+  // Optional per-entity / per-platform filters
+  const sourceTypeFilter = req.query.sourceType ? `AND source_type = ${safe(String(req.query.sourceType))}` : "";
+  const sourceIdFilter = req.query.sourceId && !isNaN(Number(req.query.sourceId)) ? `AND source_id = ${Number(req.query.sourceId)}` : "";
+  const targetFilter = req.query.target ? `AND target = ${safe(String(req.query.target))}` : "";
   try {
     const rows = await db.execute(sql.raw(`
       SELECT source_type, source_id, target, label, value, buy_value, note, created_at
       FROM value_history WHERE user_id = ${userId} AND metric = ${safe(metric)}
+      ${sourceTypeFilter} ${sourceIdFilter} ${targetFilter}
       AND created_at >= NOW() - INTERVAL '${period} days'
       ORDER BY created_at DESC
     `));

@@ -427,8 +427,8 @@ function VaultLocalDetailContent() {
       {/* Stats & Value Tab */}
       {tab === "stats" && (
         <div className="space-y-4">
-          <ValuePnlPanel compact />
           <div className="flex justify-end"><ValueEntryButton onClick={() => setValueDialogOpen(true)} /></div>
+          <ValuePnlPanel compact sourceType="local" sourceId={account.id} />
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {account.account_worth > 0 && (
               <StatCard label="Account Worth" value={`$${account.account_worth.toFixed(2)}`} color="text-emerald-400" />
